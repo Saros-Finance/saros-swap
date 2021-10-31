@@ -1,9 +1,9 @@
 [package]
-name = "spl-token-swap"
+name = "saros-swap"
 version = "2.1.0"
-description = "Solana Program Library Token Swap"
-authors = ["Solana Maintainers <maintainers@solana.foundation>"]
-repository = "https://github.com/solana-labs/solana-program-library"
+description = "Saros Swap"
+authors = ["Coin98 Finance"]
+repository = "https://github.com/coin98/saros-swap"
 license = "Apache-2.0"
 edition = "2018"
 
