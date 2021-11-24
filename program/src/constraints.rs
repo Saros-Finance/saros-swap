@@ -61,7 +61,7 @@ impl<'a> SwapConstraints<'a> {
 }
 
 //#[cfg(feature = "production")]
-const OWNER_KEY: &str = "DWxu1DPpyZP19b1DqEDrH9GE27ts79x4jG5cHi5hw5Bv";
+const OWNER_KEY: &str = "FDbLZ5DRo61queVRH9LL1mQnsiAoubQEnoCRuPEmH9M8";
 //#[cfg(feature = "production")]
 const FEES: &Fees = &Fees {
     trade_fee_numerator: 0,
