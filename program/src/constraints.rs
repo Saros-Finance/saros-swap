@@ -97,16 +97,26 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
     //     None
     // }
 };
-
 /// List of root key
 pub const ROOT_KEYS: &[&str] = &[""];
 
-/// verify user is root key
-pub fn verify_root(user: &Pubkey) -> bool {
-  let user_key = user.to_string();
-  let result = ROOT_KEYS.iter().position(|&key| key == &user_key[..]);
-  result != None
+/// Implement AuthorityConstraints for verify authority have permission
+pub struct AuthorityConstraints {
+} 
+
+impl AuthorityConstraints {
+    /// check user is authority
+    pub fn verify_root(user: &Pubkey) -> Result<(), ProgramError> {
+        let user_key = user.to_string();
+        let result = ROOT_KEYS.iter().position(|&key| key == &user_key[..]);
+        if result != None {
+            Ok(())
+        } else {
+            Err(SwapError::AddressOfAuthorityIsIncorrect.into())
+        }
+    }
 }
+
 
 #[cfg(test)]
 mod tests {

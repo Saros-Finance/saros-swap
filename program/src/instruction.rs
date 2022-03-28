@@ -283,7 +283,6 @@ impl SwapInstruction {
                 let (&is_pause, _rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
                 Self::SetPausable(SetPausable {
                     is_pause: match is_pause {
-                        0 => false,
                         1 => true,
                         _ => false,
                     }

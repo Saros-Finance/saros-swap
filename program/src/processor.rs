@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS, verify_root};
+use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS, AuthorityConstraints};
 use crate::{
     curve::{
         base::SwapCurve,
@@ -1007,13 +1007,11 @@ impl Processor {
         let swap_info = next_account_info(account_info_iter)?;
         let authority = next_account_info(account_info_iter)?;
 
-        if !verify_root(authority.key) {
-            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
-        }
-
         if !authority.is_signer {
             return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
         }
+
+        AuthorityConstraints::verify_root(authority.key)?;
 
         let mut account_data = swap_info.data.borrow_mut();
         account_data[1] = *is_pause as u8;
@@ -1030,13 +1028,11 @@ impl Processor {
         let to_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        if !verify_root(authority.key) {
-            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
-        }
-
         if !authority.is_signer {
             return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
         }
+
+        AuthorityConstraints::verify_root(authority.key)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
 
