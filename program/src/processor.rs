@@ -13,7 +13,7 @@ use crate::{
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
         SetPausable,
     },
-    state::{SwapState, SwapV1, SwapV2, SwapVersion},
+    state::{SwapState, SwapV2, SwapVersion},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -307,7 +307,7 @@ impl Processor {
             to_u64(initial_amount)?,
         )?;
 
-        let obj = SwapVersion::SwapV1(SwapV1 {
+        let obj = SwapVersion::SwapV2(SwapV2 {
             is_initialized: true,
             bump_seed,
             token_program_id,
@@ -319,6 +319,7 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
+            is_pause: false,
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -347,6 +348,10 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        if *token_swap.is_pause() {
+            return Err(SwapError::PoolSwapPausing.into());
+        }
 
         if *authority_info.key
             != Self::authority_id(program_id, swap_info.key, token_swap.bump_seed())?
@@ -514,6 +519,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if *token_swap.is_pause() {
+            return Err(SwapError::PoolSwapPausing.into());
+        }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
             return Err(SwapError::UnsupportedCurveOperation.into());
@@ -621,6 +629,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if *token_swap.is_pause() {
+            return Err(SwapError::PoolSwapPausing.into());
+        }
         Self::check_accounts(
             token_swap.as_ref(),
             program_id,
@@ -745,6 +756,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if *token_swap.is_pause() {
+            return Err(SwapError::PoolSwapPausing.into());
+        }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
             return Err(SwapError::UnsupportedCurveOperation.into());
@@ -866,6 +880,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if *token_swap.is_pause() {
+            return Err(SwapError::PoolSwapPausing.into());
+        }
         let destination_account =
             Self::unpack_token_account(destination_info, token_swap.token_program_id())?;
         let swap_token_a =
@@ -1173,6 +1190,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::AddressOfAuthorityIsIncorrect => {
                 msg!("Error: Address of authority is incorrect")
+            }
+            SwapError::PoolSwapPausing => {
+                msg!("Error: Pool swap was pause")
             }
         }
     }
