@@ -90,6 +90,15 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// SetPausable instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SetPausable {
+    /// pause
+    pub is_pause: bool,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -185,6 +194,12 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    ///   Set pausable (only root can call this instruction)
+    ///
+    ///   0. `[]` SwapV2 account
+    ///   1. `[]` Authority
+    SetPausable(SetPausable),
 }
 
 impl SwapInstruction {
@@ -244,6 +259,16 @@ impl SwapInstruction {
                 Self::WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut {
                     destination_token_amount,
                     maximum_pool_token_amount,
+                })
+            }
+            6 => {
+                let (&is_pause, _rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
+                Self::SetPausable(SetPausable {
+                    is_pause: match is_pause {
+                        0 => false,
+                        1 => true,
+                        _ => false,
+                    }
                 })
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
@@ -322,6 +347,14 @@ impl SwapInstruction {
                 buf.push(5);
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
+            }
+            Self::SetPausable(SetPausable { is_pause }) => {
+                buf.push(6);
+                let pause_bytes = match is_pause {
+                    true => [1] as [u8; 1],
+                    false => [0] as [u8; 1],
+                };
+                buf.extend_from_slice(&pause_bytes);
             }
         }
         buf

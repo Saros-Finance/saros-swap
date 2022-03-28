@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
+use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS, verify_root};
 use crate::{
     curve::{
         base::SwapCurve,
@@ -11,8 +11,9 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        SetPausable,
     },
-    state::{SwapState, SwapV1, SwapVersion},
+    state::{SwapState, SwapV1, SwapV2, SwapVersion},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -984,6 +985,31 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [SetPausable](enum.Instruction.html).
+    pub fn process_set_pause(_program_id: &Pubkey, is_pause: &bool, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+
+        if !verify_root(authority.key) {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        if *token_swap.version() == 1 as u8 {
+            return Err(SwapError::IncorrectSwapAccount.into());
+        }
+
+        let mut account_data = swap_info.data.borrow_mut();
+        account_data[SwapV2::LEN - 1] = *is_pause as u8;
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1065,6 +1091,18 @@ impl Processor {
                     accounts,
                 )
             }
+            SwapInstruction::SetPausable(
+                SetPausable {
+                    is_pause,
+                },
+            ) => {
+                msg!("Instruction: SetPausable");
+                Self::process_set_pause(
+                    program_id,
+                    &is_pause,
+                    accounts,
+                )
+            }
         }
     }
 }
@@ -1132,6 +1170,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
+            }
+            SwapError::AddressOfAuthorityIsIncorrect => {
+                msg!("Error: Address of authority is incorrect")
             }
         }
     }

@@ -102,6 +102,9 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+    /// Not root key
+    #[error("Address of authority is incorrect ")]
+    AddressOfAuthorityIsIncorrect,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

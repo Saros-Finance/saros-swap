@@ -9,6 +9,7 @@ use crate::{
 };
 
 use solana_program::program_error::ProgramError;
+use solana_program::pubkey::Pubkey;
 
 //#[cfg(feature = "production")]
 //use std::env;
@@ -96,6 +97,16 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
     //     None
     // }
 };
+
+/// List of root key
+pub const ROOT_KEYS: &[&str] = &[""];
+
+/// verify user is root key
+pub fn verify_root(user: &Pubkey) -> bool {
+  let user_key = user.to_string();
+  let result = ROOT_KEYS.iter().position(|&key| key == &user_key[..]);
+  result != None
+}
 
 #[cfg(test)]
 mod tests {
