@@ -98,7 +98,7 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
     // }
 };
 /// List of root key
-pub const ROOT_KEYS: &[&str] = &[""];
+pub const ROOT_KEYS: &[&str] = &["GnzQDYm2gvwZ8wRVmuwVAeHx5T44ovC735vDgSNhumzQ"];
 
 /// Implement AuthorityConstraints for verify authority have permission
 pub struct AuthorityConstraints {

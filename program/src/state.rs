@@ -79,7 +79,7 @@ impl SwapVersion {
     /// all versions
     pub fn is_initialized(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => swap.is_initialized() && swap.token_program_id() == &Pubkey::default(),
+            Ok(swap) => swap.is_initialized() && swap.token_program_id() != &Pubkey::default(),
             Err(_) => false,
         }
     }

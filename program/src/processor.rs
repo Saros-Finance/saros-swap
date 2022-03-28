@@ -1014,7 +1014,12 @@ impl Processor {
         AuthorityConstraints::verify_root(authority.key)?;
 
         let mut account_data = swap_info.data.borrow_mut();
-        account_data[1] = *is_pause as u8;
+        if *is_pause {
+            account_data[1] = 0 as u8;
+        } else {
+            account_data[1] = 1 as u8;
+        }
+
         Ok(())
     }
 
