@@ -60,7 +60,7 @@ pub enum SwapVersion {
 /// special implementations are provided here
 impl SwapVersion {
     /// Size of the latest version of the SwapState
-    pub const LATEST_LEN: usize = 1 + SwapV1::LEN; // add one for the version enum
+    pub const LATEST_LEN: usize = 1 + SwapV2::LEN; // add one for the version enum
 
     /// Pack a swap into a byte array, based on its version
     pub fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
