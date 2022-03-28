@@ -99,6 +99,15 @@ pub struct SetPausable {
     pub is_pause: bool,
 }
 
+/// WithdrawUnrelativeToken instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct WithdrawUnrelativeToken {
+    /// Amount to withdraw
+    pub amount: u64,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -197,9 +206,18 @@ pub enum SwapInstruction {
 
     ///   Set pausable (only root can call this instruction)
     ///
-    ///   0. `[]` SwapV2 account
-    ///   1. `[]` Authority
+    ///   0. `[writable]` SwapV2 account
+    ///   1. `[signer]` Authority
     SetPausable(SetPausable),
+
+    ///   Withdraw Unrelative token
+    ///
+    ///   0. `[]` Swap account
+    ///   1. `[]` Swap authority
+    ///   2. `[signer]` Authority
+    ///   1. `[writable]` From account
+    ///   1. `[writable]` To account
+    WithdrawUnrelativeToken(WithdrawUnrelativeToken),
 }
 
 impl SwapInstruction {
@@ -269,6 +287,12 @@ impl SwapInstruction {
                         1 => true,
                         _ => false,
                     }
+                })
+            }
+            7 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken {
+                    amount
                 })
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
@@ -355,6 +379,10 @@ impl SwapInstruction {
                     false => [0] as [u8; 1],
                 };
                 buf.extend_from_slice(&pause_bytes);
+            }
+            Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken { amount }) => {
+                buf.push(7);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
         buf

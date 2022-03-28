@@ -11,7 +11,7 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
-        SetPausable,
+        SetPausable,WithdrawUnrelativeToken
     },
     state::{SwapState, SwapV2, SwapVersion},
 };
@@ -1027,6 +1027,47 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [WithdrawUnrelativeToken](enum.Instruction.html).
+    pub fn process_withdraw_unrelative_token(_program_id: &Pubkey, amount: &u64, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let swap_authority_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+        let from_account_info = next_account_info(account_info_iter)?;
+        let to_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        if !verify_root(authority.key) {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        if *from_account_info.key == *token_swap.as_ref().token_a_account() || *from_account_info.key == *token_swap.as_ref().token_b_account() {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        if *to_account_info.key == *token_swap.as_ref().token_a_account() || *to_account_info.key == *token_swap.as_ref().token_b_account() {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        Self::token_transfer(
+            swap_info.key,
+            token_program_info.clone(),
+            from_account_info.clone(),
+            to_account_info.clone(),
+            swap_authority_info.clone(),
+            token_swap.bump_seed(),
+            *amount,
+        )?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1117,6 +1158,18 @@ impl Processor {
                 Self::process_set_pause(
                     program_id,
                     &is_pause,
+                    accounts,
+                )
+            }
+            SwapInstruction::WithdrawUnrelativeToken(
+                WithdrawUnrelativeToken {
+                    amount,
+                },
+            ) => {
+                msg!("Instruction: SetPausable");
+                Self::process_withdraw_unrelative_token(
+                    program_id,
+                    &amount,
                     accounts,
                 )
             }
