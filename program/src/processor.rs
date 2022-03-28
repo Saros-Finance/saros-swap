@@ -13,7 +13,7 @@ use crate::{
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
         SetPausable,WithdrawUnrelativeToken
     },
-    state::{SwapState, SwapV2, SwapVersion},
+    state::{SwapState, SwapV1, SwapVersion},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -307,7 +307,7 @@ impl Processor {
             to_u64(initial_amount)?,
         )?;
 
-        let obj = SwapVersion::SwapV2(SwapV2 {
+        let obj = SwapVersion::SwapV1(SwapV1 {
             is_initialized: true,
             bump_seed,
             token_program_id,
@@ -319,7 +319,6 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
-            is_pause: false,
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -348,9 +347,9 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-
-        if *token_swap.is_pause() {
-            return Err(SwapError::PoolSwapPausing.into());
+        
+        if !token_swap.is_initialized() {
+            return Err(SwapError::SwapAccountIsPause.into());
         }
 
         if *authority_info.key
@@ -519,8 +518,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if *token_swap.is_pause() {
-            return Err(SwapError::PoolSwapPausing.into());
+        if !token_swap.is_initialized() {
+            return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
@@ -629,8 +628,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if *token_swap.is_pause() {
-            return Err(SwapError::PoolSwapPausing.into());
+        if !token_swap.is_initialized() {
+            return Err(SwapError::SwapAccountIsPause.into());
         }
         Self::check_accounts(
             token_swap.as_ref(),
@@ -756,8 +755,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if *token_swap.is_pause() {
-            return Err(SwapError::PoolSwapPausing.into());
+        if !token_swap.is_initialized() {
+            return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
@@ -880,8 +879,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if *token_swap.is_pause() {
-            return Err(SwapError::PoolSwapPausing.into());
+        if !token_swap.is_initialized() {
+            return Err(SwapError::SwapAccountIsPause.into());
         }
         let destination_account =
             Self::unpack_token_account(destination_info, token_swap.token_program_id())?;
@@ -1016,14 +1015,8 @@ impl Processor {
             return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
         }
 
-        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-
-        if *token_swap.version() == 1 as u8 {
-            return Err(SwapError::IncorrectSwapAccount.into());
-        }
-
         let mut account_data = swap_info.data.borrow_mut();
-        account_data[SwapV2::LEN - 1] = *is_pause as u8;
+        account_data[1] = *is_pause as u8;
         Ok(())
     }
 
@@ -1244,8 +1237,8 @@ impl PrintProgramError for SwapError {
             SwapError::AddressOfAuthorityIsIncorrect => {
                 msg!("Error: Address of authority is incorrect")
             }
-            SwapError::PoolSwapPausing => {
-                msg!("Error: Pool swap was pause")
+            SwapError::SwapAccountIsPause => {
+                msg!("Error: Swap account is pause or not initialize")
             }
         }
     }
