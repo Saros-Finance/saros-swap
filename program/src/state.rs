@@ -79,7 +79,7 @@ impl SwapVersion {
     /// all versions
     pub fn is_initialized(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => swap.is_initialized() && swap.token_program_id() != &Pubkey::default(),
+            Ok(swap) => swap.is_initialized(),
             Err(_) => false,
         }
     }
@@ -128,7 +128,7 @@ pub struct SwapV1 {
 
 impl SwapState for SwapV1 {
     fn is_initialized(&self) -> bool {
-        self.is_initialized
+        self.token_program_id != Pubkey::default()
     }
 
     fn bump_seed(&self) -> u8 {

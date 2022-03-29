@@ -108,6 +108,17 @@ pub struct WithdrawUnrelativeToken {
     pub amount: u64,
 }
 
+/// SetFeeAndSwapCurve instruction data
+#[repr(C)]
+#[derive(Debug, PartialEq)]
+pub struct SetFeeAndSwapCurve {
+    /// all swap fees
+    pub fees: Fees,
+    /// swap curve info for pool, including CurveType and anything
+    /// else that may be required
+    pub swap_curve: SwapCurve,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -218,6 +229,12 @@ pub enum SwapInstruction {
     ///   1. `[writable]` From account
     ///   1. `[writable]` To account
     WithdrawUnrelativeToken(WithdrawUnrelativeToken),
+
+    ///   Set Fee, swap curve
+    ///
+    ///   0. `[writable]` Swap account
+    ///   2. `[signer]` Authority
+    SetFeeAndSwapCurve(SetFeeAndSwapCurve),
 }
 
 impl SwapInstruction {
@@ -293,6 +310,16 @@ impl SwapInstruction {
                 Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken {
                     amount
                 })
+            }
+            8 => {
+                if rest.len() >= Fees::LEN {
+                    let (fees, rest) = rest.split_at(Fees::LEN);
+                    let fees = Fees::unpack_unchecked(fees)?;
+                    let swap_curve = SwapCurve::unpack_unchecked(rest)?;
+                    Self::SetFeeAndSwapCurve(SetFeeAndSwapCurve { fees, swap_curve })
+                } else {
+                    return Err(SwapError::InvalidInstruction.into());
+                }
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -382,6 +409,15 @@ impl SwapInstruction {
             Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken { amount }) => {
                 buf.push(7);
                 buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::SetFeeAndSwapCurve(SetFeeAndSwapCurve { fees, swap_curve }) => {
+                buf.push(8);
+                let mut fees_slice = [0u8; Fees::LEN];
+                Pack::pack_into_slice(fees, &mut fees_slice[..]);
+                buf.extend_from_slice(&fees_slice);
+                let mut swap_curve_slice = [0u8; SwapCurve::LEN];
+                Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
+                buf.extend_from_slice(&swap_curve_slice);
             }
         }
         buf

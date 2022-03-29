@@ -11,7 +11,7 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
-        SetPausable,WithdrawUnrelativeToken
+        SetPausable,WithdrawUnrelativeToken,SetFeeAndSwapCurve
     },
     state::{SwapState, SwapV1, SwapVersion},
 };
@@ -1062,6 +1062,44 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [WithdrawUnrelativeToken](enum.Instruction.html).
+    pub fn process_set_fee_and_swap_curve(_program_id: &Pubkey, fees: Fees, swap_curve: SwapCurve, accounts: &[AccountInfo], swap_constraints: &Option<SwapConstraints>, ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+        AuthorityConstraints::verify_root(authority.key)?;
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        if let Some(swap_constraints) = swap_constraints {
+            swap_constraints.validate_curve(&swap_curve)?;
+            swap_constraints.validate_fees(&fees)?;
+        }
+        fees.validate()?;
+        swap_curve.calculator.validate()?;
+
+        let obj = SwapVersion::SwapV1(SwapV1 {
+            is_initialized: token_swap.is_initialized(),
+            bump_seed: token_swap.bump_seed(),
+            token_program_id: *token_swap.token_program_id(),
+            token_a: *token_swap.token_a_account(),
+            token_b: *token_swap.token_b_account(),
+            pool_mint: *token_swap.pool_mint(),
+            token_a_mint: *token_swap.token_a_mint(),
+            token_b_mint: *token_swap.token_b_mint(),
+            pool_fee_account: *token_swap.pool_fee_account(),
+            fees: fees,
+            swap_curve: swap_curve,
+        });
+        SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1166,6 +1204,10 @@ impl Processor {
                     &amount,
                     accounts,
                 )
+            }
+            SwapInstruction::SetFeeAndSwapCurve(SetFeeAndSwapCurve { fees, swap_curve }) => {
+                msg!("Instruction: SetFeeAndSwapCurve");
+                Self::process_set_fee_and_swap_curve(program_id, fees, swap_curve, accounts, swap_constraints)
             }
         }
     }
