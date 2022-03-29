@@ -1062,7 +1062,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [WithdrawUnrelativeToken](enum.Instruction.html).
+    /// Processes a [SetFeeAndSwapCurve](enum.Instruction.html).
     pub fn process_set_fee_and_swap_curve(_program_id: &Pubkey, fees: Fees, swap_curve: SwapCurve, accounts: &[AccountInfo], swap_constraints: &Option<SwapConstraints>, ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
