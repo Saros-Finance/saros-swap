@@ -226,14 +226,15 @@ pub enum SwapInstruction {
     ///   0. `[]` Swap account
     ///   1. `[]` Swap authority
     ///   2. `[signer]` Authority
-    ///   1. `[writable]` From account
-    ///   1. `[writable]` To account
+    ///   3. `[writable]` From account
+    ///   4. `[writable]` To account
+    ///   5. `[]` Token program account
     WithdrawUnrelativeToken(WithdrawUnrelativeToken),
 
     ///   Set Fee, swap curve
     ///
     ///   0. `[writable]` Swap account
-    ///   2. `[signer]` Authority
+    ///   1. `[signer]` Authority
     SetFeeAndSwapCurve(SetFeeAndSwapCurve),
 }
 
