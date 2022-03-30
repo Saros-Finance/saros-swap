@@ -1198,7 +1198,7 @@ impl Processor {
                     amount,
                 },
             ) => {
-                msg!("Instruction: SetPausable");
+                msg!("Instruction: WithdrawUnrelativeToken");
                 Self::process_withdraw_unrelative_token(
                     program_id,
                     &amount,
