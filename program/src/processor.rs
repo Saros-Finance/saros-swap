@@ -308,7 +308,7 @@ impl Processor {
         )?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
-            is_initialized: true,
+            is_not_pause: true,
             bump_seed,
             token_program_id,
             token_a: *token_a_info.key,
@@ -348,7 +348,7 @@ impl Processor {
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         
-        if !token_swap.is_initialized() {
+        if SwapVersion::is_pause(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
 
@@ -518,7 +518,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized() {
+        if SwapVersion::is_pause(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
@@ -628,7 +628,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized() {
+        if SwapVersion::is_pause(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         Self::check_accounts(
@@ -755,7 +755,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized() {
+        if SwapVersion::is_pause(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
@@ -879,7 +879,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if !token_swap.is_initialized() {
+        if SwapVersion::is_pause(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let destination_account =
@@ -1083,7 +1083,7 @@ impl Processor {
         swap_curve.calculator.validate()?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
-            is_initialized: token_swap.is_initialized(),
+            is_not_pause: token_swap.is_not_pause(),
             bump_seed: token_swap.bump_seed(),
             token_program_id: *token_swap.token_program_id(),
             token_a: *token_swap.token_a_account(),
