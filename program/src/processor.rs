@@ -11,7 +11,7 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
-        SetPausable,WithdrawUnrelativeToken,SetFeeAndSwapCurve
+        SetPausable,WithdrawUnrelativeToken,SetFee
     },
     state::{SwapState, SwapV1, SwapVersion},
 };
@@ -1062,8 +1062,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes a [SetFeeAndSwapCurve](enum.Instruction.html).
-    pub fn process_set_fee_and_swap_curve(_program_id: &Pubkey, fees: Fees, swap_curve: SwapCurve, accounts: &[AccountInfo], swap_constraints: &Option<SwapConstraints>, ) -> ProgramResult {
+    /// Processes a [SetFee](enum.Instruction.html).
+    pub fn process_set_fee(_program_id: &Pubkey, fees: Fees, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority = next_account_info(account_info_iter)?;
@@ -1075,12 +1075,7 @@ impl Processor {
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
 
-        if let Some(swap_constraints) = swap_constraints {
-            swap_constraints.validate_curve(&swap_curve)?;
-            swap_constraints.validate_fees(&fees)?;
-        }
         fees.validate()?;
-        swap_curve.calculator.validate()?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
             is_not_pause: token_swap.is_not_pause(),
@@ -1093,7 +1088,7 @@ impl Processor {
             token_b_mint: *token_swap.token_b_mint(),
             pool_fee_account: *token_swap.pool_fee_account(),
             fees: fees,
-            swap_curve: swap_curve,
+            swap_curve: token_swap.swap_curve().clone(),
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
 
@@ -1205,9 +1200,9 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::SetFeeAndSwapCurve(SetFeeAndSwapCurve { fees, swap_curve }) => {
-                msg!("Instruction: SetFeeAndSwapCurve");
-                Self::process_set_fee_and_swap_curve(program_id, fees, swap_curve, accounts, swap_constraints)
+            SwapInstruction::SetFee(SetFee { fees }) => {
+                msg!("Instruction: SetFee");
+                Self::process_set_fee(program_id, fees, accounts)
             }
         }
     }

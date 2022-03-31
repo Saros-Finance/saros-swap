@@ -54,7 +54,7 @@ pub struct SwapResult {
 
 /// Concrete struct to wrap around the trait object which performs calculation.
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SwapCurve {
     /// The type of curve contained in the calculator, helpful for outside
     /// queries
