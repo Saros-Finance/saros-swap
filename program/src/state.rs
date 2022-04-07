@@ -12,8 +12,8 @@ use solana_program::{
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
 pub trait SwapState {
-    /// Is the swap initialized, with data written to it
-    fn is_initialized(&self) -> bool;
+    /// state of swap account
+    fn state(&self) -> u8;
     /// Bump seed used to generate the program address / authority
     fn bump_seed(&self) -> u8;
     /// Token program ID associated with the swap
@@ -37,8 +37,6 @@ pub trait SwapState {
     fn fees(&self) -> &Fees;
     /// Curve associated with swap
     fn swap_curve(&self) -> &SwapCurve;
-    /// Pausable feature
-    fn is_not_pause(&self) -> bool;
 }
 
 /// All versions of SwapState
@@ -81,7 +79,7 @@ impl SwapVersion {
     /// all versions
     pub fn is_initialized(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => swap.is_initialized(),
+            Ok(swap) => (swap.state() & 1u8) != 0u8,
             Err(_) => false,
         }
     }
@@ -89,7 +87,7 @@ impl SwapVersion {
     /// verify swap is pause
     pub fn is_pause(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => !swap.is_not_pause(),
+            Ok(swap) => (swap.state() & 2u8) != 0u8,
             Err(_) => true,
         }
     }
@@ -99,8 +97,8 @@ impl SwapVersion {
 #[repr(C)]
 #[derive(Debug, Default, PartialEq)]
 pub struct SwapV1 {
-    /// pool not pause (for migrate from old swap account with is_initialized feild).
-    pub is_not_pause: bool,
+    /// state of SwapAccount.
+    pub state: u8,
     /// Bump seed used in program address.
     /// The program address is created deterministically with the bump seed,
     /// swap program id, and swap account pubkey.  This program address has
@@ -138,8 +136,8 @@ pub struct SwapV1 {
 
 impl SwapState for SwapV1 {
     /// Swap state will verify is_initialized by different way
-    fn is_initialized(&self) -> bool {
-        self.token_program_id != Pubkey::default()
+    fn state(&self) -> u8 {
+        self.state
     }
 
     fn bump_seed(&self) -> u8 {
@@ -181,16 +179,12 @@ impl SwapState for SwapV1 {
     fn swap_curve(&self) -> &SwapCurve {
         &self.swap_curve
     }
-
-    fn is_not_pause(&self) -> bool {
-        self.is_not_pause
-    }
 }
 
 impl Sealed for SwapV1 {}
 impl IsInitialized for SwapV1 {
     fn is_initialized(&self) -> bool {
-        self.token_program_id != Pubkey::default()
+        (self.state & 1u8) != 0u8
     }
 }
 
@@ -200,7 +194,7 @@ impl Pack for SwapV1 {
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, 323];
         let (
-            is_not_pause,
+            state,
             bump_seed,
             token_program_id,
             token_a,
@@ -212,7 +206,7 @@ impl Pack for SwapV1 {
             fees,
             swap_curve,
         ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
-        is_not_pause[0] = self.is_not_pause as u8;
+        state[0] = self.state;
         bump_seed[0] = self.bump_seed;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         token_a.copy_from_slice(self.token_a.as_ref());
@@ -230,7 +224,7 @@ impl Pack for SwapV1 {
         let input = array_ref![input, 0, 323];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
-            is_not_pause,
+            state,
             bump_seed,
             token_program_id,
             token_a,
@@ -243,11 +237,7 @@ impl Pack for SwapV1 {
             swap_curve,
         ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
         Ok(Self {
-            is_not_pause: match is_not_pause {
-                [0] => false,
-                [1] => true,
-                _ => return Err(ProgramError::InvalidAccountData),
-            },
+            state: state[0],
             bump_seed: bump_seed[0],
             token_program_id: Pubkey::new_from_array(*token_program_id),
             token_a: Pubkey::new_from_array(*token_a),

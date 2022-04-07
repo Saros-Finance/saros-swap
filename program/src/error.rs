@@ -106,7 +106,7 @@ pub enum SwapError {
     #[error("Address of authority is incorrect")]
     AddressOfAuthorityIsIncorrect,
     /// Pool swap pause
-    #[error("Swap account is pause or not initialize")]
+    #[error("Swap account is pause")]
     SwapAccountIsPause,
 }
 impl From<SwapError> for ProgramError {

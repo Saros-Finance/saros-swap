@@ -308,7 +308,7 @@ impl Processor {
         )?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
-            is_not_pause: true,
+            state: 1u8,
             bump_seed,
             token_program_id,
             token_a: *token_a_info.key,
@@ -1015,9 +1015,9 @@ impl Processor {
 
         let mut account_data = swap_info.data.borrow_mut();
         if *is_pause {
-            account_data[1] = 0 as u8;
+            account_data[1] = 3u8;
         } else {
-            account_data[1] = 1 as u8;
+            account_data[1] = 1u8;
         }
 
         Ok(())
@@ -1078,7 +1078,7 @@ impl Processor {
         fees.validate()?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
-            is_not_pause: token_swap.is_not_pause(),
+            state: token_swap.state(),
             bump_seed: token_swap.bump_seed(),
             token_program_id: *token_swap.token_program_id(),
             token_a: *token_swap.token_a_account(),
