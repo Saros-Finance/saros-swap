@@ -1276,7 +1276,7 @@ impl PrintProgramError for SwapError {
                 msg!("Error: Address of authority is incorrect")
             }
             SwapError::SwapAccountIsPause => {
-                msg!("Error: Swap account is pause or not initialize")
+                msg!("Error: Swap account is pause")
             }
         }
     }
