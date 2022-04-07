@@ -9,6 +9,9 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+const IS_INITIALIZED_FLAT: u8 = 1;
+const IS_PAUSED_FLAT: u8 = 2;
+
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
 pub trait SwapState {
@@ -79,15 +82,15 @@ impl SwapVersion {
     /// all versions
     pub fn is_initialized(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => (swap.state() & 1u8) != 0u8,
+            Ok(swap) => (swap.state() & IS_INITIALIZED_FLAT) != 0u8,
             Err(_) => false,
         }
     }
 
     /// verify swap is pause
-    pub fn is_pause(input: &[u8]) -> bool {
+    pub fn is_paused(input: &[u8]) -> bool {
         match Self::unpack(input) {
-            Ok(swap) => (swap.state() & 2u8) != 0u8,
+            Ok(swap) => (swap.state() & IS_PAUSED_FLAT) != 0u8,
             Err(_) => true,
         }
     }
@@ -184,7 +187,7 @@ impl SwapState for SwapV1 {
 impl Sealed for SwapV1 {}
 impl IsInitialized for SwapV1 {
     fn is_initialized(&self) -> bool {
-        (self.state & 1u8) != 0u8
+        (self.state & IS_INITIALIZED_FLAT) != 0u8
     }
 }
 

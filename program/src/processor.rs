@@ -348,7 +348,7 @@ impl Processor {
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         
-        if SwapVersion::is_pause(&swap_info.data.borrow()) {
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
 
@@ -518,7 +518,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if SwapVersion::is_pause(&swap_info.data.borrow()) {
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
@@ -628,7 +628,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if SwapVersion::is_pause(&swap_info.data.borrow()) {
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         Self::check_accounts(
@@ -755,7 +755,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if SwapVersion::is_pause(&swap_info.data.borrow()) {
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let calculator = &token_swap.swap_curve().calculator;
@@ -879,7 +879,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        if SwapVersion::is_pause(&swap_info.data.borrow()) {
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
             return Err(SwapError::SwapAccountIsPause.into());
         }
         let destination_account =
