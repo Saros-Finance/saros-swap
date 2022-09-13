@@ -62,8 +62,9 @@ impl<'a> SwapConstraints<'a> {
 
 //#[cfg(feature = "production")]
 const OWNER_KEY: &str = "FDbLZ5DRo61queVRH9LL1mQnsiAoubQEnoCRuPEmH9M8";
+/// default value for fee
 //#[cfg(feature = "production")]
-const FEES: &Fees = &Fees {
+pub const FEES: &Fees = &Fees {
     trade_fee_numerator: 0,
     trade_fee_denominator: 10000,
     owner_trade_fee_numerator: 30,
