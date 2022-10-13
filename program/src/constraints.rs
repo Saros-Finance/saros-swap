@@ -65,9 +65,9 @@ const OWNER_KEY: &str = "FDbLZ5DRo61queVRH9LL1mQnsiAoubQEnoCRuPEmH9M8";
 /// default value for fee
 //#[cfg(feature = "production")]
 pub const FEES: &Fees = &Fees {
-    trade_fee_numerator: 0,
+    trade_fee_numerator: 25,
     trade_fee_denominator: 10000,
-    owner_trade_fee_numerator: 30,
+    owner_trade_fee_numerator: 5,
     owner_trade_fee_denominator: 10000,
     owner_withdraw_fee_numerator: 0,
     owner_withdraw_fee_denominator: 0,
