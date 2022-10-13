@@ -1,15 +1,16 @@
 //! All fee information, to be used for validation currently
 
 use crate::error::SwapError;
-use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+use arrayref::{array_mut_ref, mut_array_refs};
 use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
 };
+use crate::constraints::FEES;
 use std::convert::TryFrom;
 
 /// Encapsulates all fee information and calculations for swap operations
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Fees {
     /// Trade fees are extra token amounts that are held inside the token
     /// accounts during a trade, making the value of liquidity tokens rise.
@@ -132,6 +133,21 @@ impl IsInitialized for Fees {
     }
 }
 
+impl Default for Fees {
+    fn default() -> Self {
+        Fees {
+            trade_fee_numerator: FEES.trade_fee_numerator,
+            trade_fee_denominator: FEES.trade_fee_denominator,
+            owner_trade_fee_numerator: FEES.owner_trade_fee_numerator,
+            owner_trade_fee_denominator: FEES.owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator: FEES.owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator: FEES.owner_withdraw_fee_denominator,
+            host_fee_numerator: FEES.host_fee_numerator,
+            host_fee_denominator: FEES.host_fee_denominator
+        }
+    }
+}
+
 impl Sealed for Fees {}
 impl Pack for Fees {
     const LEN: usize = 64;
@@ -157,29 +173,9 @@ impl Pack for Fees {
         *host_fee_denominator = self.host_fee_denominator.to_le_bytes();
     }
 
-    fn unpack_from_slice(input: &[u8]) -> Result<Fees, ProgramError> {
-        let input = array_ref![input, 0, 64];
-        #[allow(clippy::ptr_offset_with_cast)]
-        let (
-            trade_fee_numerator,
-            trade_fee_denominator,
-            owner_trade_fee_numerator,
-            owner_trade_fee_denominator,
-            owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8];
-        Ok(Self {
-            trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
-            trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
-            owner_trade_fee_numerator: u64::from_le_bytes(*owner_trade_fee_numerator),
-            owner_trade_fee_denominator: u64::from_le_bytes(*owner_trade_fee_denominator),
-            owner_withdraw_fee_numerator: u64::from_le_bytes(*owner_withdraw_fee_numerator),
-            owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
-            host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
-            host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
-        })
+    /// use default instead of unpack from pool
+    fn unpack_from_slice(_input: &[u8]) -> Result<Fees, ProgramError> {
+        Ok(Fees::default())
     }
 }
 
