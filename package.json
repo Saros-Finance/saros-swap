@@ -1,0 +1,27 @@
+{
+  "name": "saros-swap-js",
+  "version": "2.2.0",
+  "description": "AMM on Solana",
+  "main": "index.js",
+  "author": "Coin98 Finance",
+  "license": "Apache-2.0",
+  "homepage": "https://saros.finance",
+  "scripts": {
+    "build": "cargo build-bpf --features production",
+    "build:localhost": "anchor build -- --features localhost",
+    "test": "ts-mocha -p ./tsconfig.mocha.json ./tests/*.spec.ts --timeout 60000"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coin98/saros-swap.git"
+  },
+  "dependencies": {
+    "@coin98/solana-support-library": "^0.6.0",
+    "@project-serum/borsh": "0.2.5",
+    "@solana/web3.js": "1.64",
+    "bn.js": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.1"
+  }
+}
