@@ -60,7 +60,10 @@ impl<'a> SwapConstraints<'a> {
     }
 }
 
-//#[cfg(feature = "production")]
+#[cfg(feature = "localhost")]
+const OWNER_KEY: &str = "8ST8fTBGKaVPx4f1KG1zMMw4EJmSJBW2UgX1JR2pPoVa";
+
+#[cfg(all(not(feature = "localhost")))]
 const OWNER_KEY: &str = "FDbLZ5DRo61queVRH9LL1mQnsiAoubQEnoCRuPEmH9M8";
 /// default value for fee
 //#[cfg(feature = "production")]

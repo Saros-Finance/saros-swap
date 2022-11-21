@@ -10,7 +10,6 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  sendAndConfirmTransaction,
   SystemProgram,
   Transaction
 } from '@solana/web3.js';
@@ -34,26 +33,24 @@ export class SarosSwapService {
   static async createPool(
     connection: Connection,
     payerAccount: Keypair,
+    poolAccount: Keypair,
     protocolFeeAddress: PublicKey, // SOL address
     token0MintAddress: PublicKey,
     token1MintAddress: PublicKey,
-    userAccount: Keypair,
+    delegateAccount: Keypair,
+    userAddress: PublicKey,
     userToken0Address: PublicKey,
     userToken1Address: PublicKey,
-    token0Amount: number,
-    token1Amount: number,
+    token0Amount: BN,
+    token1Amount: BN,
     curveType: number,
     curveParameters: BN,
     sarosSwapProgramId: PublicKey,
   ): Promise<PublicKey> {
+    const preTransaction = new Transaction();
     const transaction = new Transaction()
 
     // POOL ACCOUNT
-    const poolAccount = this.findPoolAccount(
-      token0MintAddress,
-      token1MintAddress,
-      sarosSwapProgramId,
-    );
     const [poolAuthorityAddress,] = this.findPoolAuthorityAddress(
       poolAccount.publicKey,
       sarosSwapProgramId,
@@ -73,15 +70,15 @@ export class SarosSwapService {
         space: INITIALIZE_MINT_SPAN,
         programId: TOKEN_PROGRAM_ID,
       });
-      transaction.add(createAccountInstruction);
+      preTransaction.add(createAccountInstruction);
 
       const initializeTokenMintInstruction = TokenProgramInstructionService.initializeMint(
         poolLpMintAccount.publicKey,
-        8,
+        6,
         poolAuthorityAddress,
         null,
       );
-      transaction.add(initializeTokenMintInstruction);
+      preTransaction.add(initializeTokenMintInstruction);
     }
 
     // POOL TOKEN ACCOUNTS
@@ -96,7 +93,7 @@ export class SarosSwapService {
         poolAuthorityAddress,
         token0MintAddress,
       );
-      transaction.add(createATAInstruction);
+      preTransaction.add(createATAInstruction);
     }
     // Token1
     const poolToken1Address = TokenProgramService.findAssociatedTokenAddress(
@@ -109,21 +106,21 @@ export class SarosSwapService {
         poolAuthorityAddress,
         token1MintAddress,
       );
-      transaction.add(createATAInstruction);
+      preTransaction.add(createATAInstruction);
     }
 
     // USER TOKEN ACCOUNT
     const userLpTokenAddress = TokenProgramService.findAssociatedTokenAddress(
-      userAccount.publicKey,
+      userAddress,
       poolLpMintAccount.publicKey,
     );
     if (await SolanaService.isAddressAvailable(connection, userLpTokenAddress)) {
       const createATAInstruction = TokenProgramInstructionService.createAssociatedTokenAccount(
         payerAccount.publicKey,
-        userAccount.publicKey,
+        userAddress,
         poolLpMintAccount.publicKey,
       );
-      transaction.add(createATAInstruction);
+      preTransaction.add(createATAInstruction);
     }
 
     // FEE TOKEN ACCOUNT
@@ -132,7 +129,7 @@ export class SarosSwapService {
       poolLpMintAccount.publicKey,
     );
     if (
-      userAccount.publicKey.toBase58() !== protocolFeeAddress.toBase58()
+      userAddress.toBase58() !== protocolFeeAddress.toBase58()
       && await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
     ) {
       const createATAInstruction = TokenProgramInstructionService.createAssociatedTokenAccount(
@@ -140,19 +137,19 @@ export class SarosSwapService {
         protocolFeeAddress,
         poolLpMintAccount.publicKey,
       );
-      transaction.add(createATAInstruction);
+      preTransaction.add(createATAInstruction);
     }
 
     // PRE-DEPOSIT TO POOL TOKEN ACCOUNTS
     const transferToken0Instruction = TokenProgramInstructionService.transfer(
-      userAccount.publicKey,
+      userAddress,
       userToken0Address,
       poolToken0Address,
       new BN(token0Amount),
     );
     transaction.add(transferToken0Instruction);
     const transferToken1Instruction = TokenProgramInstructionService.transfer(
-      userAccount.publicKey,
+      userAddress,
       userToken1Address,
       poolToken1Address,
       new BN(token1Amount),
@@ -161,7 +158,7 @@ export class SarosSwapService {
 
     // CREATE POOL
     const lamportsToCreatePool = await connection.getMinimumBalanceForRentExemption(INITIALIZE_POOL_SPAN);
-    if (!await SolanaService.isAddressInUse(connection, poolAccount.publicKey)) {
+    if (await SolanaService.isAddressAvailable(connection, poolAccount.publicKey)) {
       transaction.add(
         SystemProgram.createAccount({
           fromPubkey: payerAccount.publicKey,
@@ -190,17 +187,62 @@ export class SarosSwapService {
       curveType,
       curveParameters,
       sarosSwapProgramId,
-    )
+    );
     transaction.add(tokenSwapInstruction);
 
-    const txSign = await sendTransaction(connection, transaction, [
-      userAccount,
+    const preTxSign = await sendTransaction(connection, preTransaction, [
+      payerAccount,
       poolLpMintAccount,
+    ]);
+
+    const txSign = await sendTransaction(connection, transaction, [
+      payerAccount,
+      delegateAccount,
       poolAccount,
     ]);
 
-    console.info(`Created pool ${poolAccount.publicKey}`, '---', txSign, '\n');
+    console.info(`Created pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
     return poolAccount.publicKey;
+  }
+
+  static async createDeterministicPool(
+    connection: Connection,
+    payerAccount: Keypair,
+    protocolFeeAddress: PublicKey, // SOL address
+    token0MintAddress: PublicKey,
+    token1MintAddress: PublicKey,
+    delegateAccount: Keypair,
+    userAddress: PublicKey,
+    userToken0Address: PublicKey,
+    userToken1Address: PublicKey,
+    token0Amount: BN,
+    token1Amount: BN,
+    curveType: number,
+    curveParameters: BN,
+    sarosSwapProgramId: PublicKey,
+  ): Promise<PublicKey> {
+    const poolAccount = this.findPoolAccount(
+      token0MintAddress,
+      token1MintAddress,
+      sarosSwapProgramId,
+    );
+    return this.createPool(
+      connection,
+      payerAccount,
+      poolAccount,
+      protocolFeeAddress,
+      token0MintAddress,
+      token1MintAddress,
+      delegateAccount,
+      userAddress,
+      userToken0Address,
+      userToken1Address,
+      token0Amount,
+      token1Amount,
+      curveType,
+      curveParameters,
+      sarosSwapProgramId,
+    );
   }
 
   static async swap(
@@ -379,14 +421,14 @@ export class SarosSwapService {
 
     const withdrawInstruction = SarosSwapInstructionService.withdrawAllTokenTypes(
       poolAddress,
-      poolAccountInfo.lpTokenMint,
-      poolAccountInfo.feeAccount,
       poolAccountInfo.token0Account,
       poolAccountInfo.token1Account,
+      poolAccountInfo.lpTokenMint,
+      poolAccountInfo.feeAccount,
       delegateAccount.publicKey,
-      userLpTokenAddress,
       userToken0Address,
       userToken1Address,
+      userLpTokenAddress,
       lpTokenAmount,
       minToken0Amount,
       minToken1Amount,
@@ -394,7 +436,7 @@ export class SarosSwapService {
     );
     transaction.add(withdrawInstruction);
 
-    const txSign = await sendAndConfirmTransaction(connection, transaction, [
+    const txSign = await sendTransaction(connection, transaction, [
       payerAccount,
       delegateAccount,
     ]);
@@ -467,7 +509,7 @@ export class SarosSwapService {
     );
     transaction.add(depositInstruction);
 
-    const txSign = await sendAndConfirmTransaction(connection, transaction, [
+    const txSign = await sendTransaction(connection, transaction, [
       payerAccount,
       delegateAccount,
     ]);
@@ -534,7 +576,7 @@ export class SarosSwapService {
     );
     transaction.add(depositInstruction);
 
-    const txSign = await sendAndConfirmTransaction(connection, transaction, [
+    const txSign = await sendTransaction(connection, transaction, [
       payerAccount,
       delegateAccount,
     ]);
