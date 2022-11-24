@@ -1044,12 +1044,15 @@ impl Processor {
                 },
             ) => {
                 msg!("Instruction: DepositSingleTokenTypeExactAmountIn");
-                Self::process_deposit_single_token_type_exact_amount_in(
-                    program_id,
-                    source_token_amount,
-                    minimum_pool_token_amount,
-                    accounts,
-                )
+                let _source_token_amount = source_token_amount;
+                let _minimum_pool_token_amount = minimum_pool_token_amount;
+                Ok(())
+                // Self::process_deposit_single_token_type_exact_amount_in(
+                //     program_id,
+                //     source_token_amount,
+                //     minimum_pool_token_amount,
+                //     accounts,
+                // )
             }
             SwapInstruction::WithdrawSingleTokenTypeExactAmountOut(
                 WithdrawSingleTokenTypeExactAmountOut {
@@ -1058,12 +1061,15 @@ impl Processor {
                 },
             ) => {
                 msg!("Instruction: WithdrawSingleTokenTypeExactAmountOut");
-                Self::process_withdraw_single_token_type_exact_amount_out(
-                    program_id,
-                    destination_token_amount,
-                    maximum_pool_token_amount,
-                    accounts,
-                )
+                let _destination_token_amount = destination_token_amount;
+                let _maximum_pool_token_amount = maximum_pool_token_amount;
+                Ok(())
+                // Self::process_withdraw_single_token_type_exact_amount_out(
+                //     program_id,
+                //     destination_token_amount,
+                //     maximum_pool_token_amount,
+                //     accounts,
+                // )
             }
         }
     }
