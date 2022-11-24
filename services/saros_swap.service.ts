@@ -18,6 +18,7 @@ import {
   INITIALIZE_POOL_SPAN,
   SarosSwapInstructionService
 } from './saros_swap.instruction';
+import { SarosSwapCalculator } from './saros_swap_calculator';
 
 const TRADING_FEE_NUMERATOR = new BN(25); // For LP
 const TRADING_FEE_DENOMINATOR = new BN(10000);
@@ -362,9 +363,12 @@ export class SarosSwapService {
       transaction.add(createATAInstruction);
     }
 
-    const lpTokenForToken0 = maxToken0Amount.div(poolAccountInfo.lpTokenSupply);
-    const lpTokenForToken1 = maxToken1Amount.div(poolAccountInfo.lpTokenSupply);
-    const lpTokenAmount = BN.min(lpTokenForToken0, lpTokenForToken1);
+    const calculator = new SarosSwapCalculator(poolAccountInfo);
+    const lpTokenAmount = calculator.calcLpTokenAmountForDepositAllTypes(
+      maxToken0Amount,
+      maxToken1Amount,
+      0,
+    );
 
     const depositInstruction = SarosSwapInstructionService.depositAllTokenTypes(
       poolAddress,
@@ -416,8 +420,11 @@ export class SarosSwapService {
     }
     const withdrawLpTokenAmount = lpTokenAmount.sub(feeAmount);
 
-    const minToken0Amount = poolAccountInfo.token0Amount.mul(withdrawLpTokenAmount).div(poolAccountInfo.lpTokenSupply);
-    const minToken1Amount = poolAccountInfo.token1Amount.mul(withdrawLpTokenAmount).div(poolAccountInfo.lpTokenSupply);
+    const calculator = new SarosSwapCalculator(poolAccountInfo);
+    const [minToken0Amount, minToken1Amount] = calculator.calcTokenAmountsForWithdrawAllTypes(
+      withdrawLpTokenAmount,
+      0,
+    );
 
     const withdrawInstruction = SarosSwapInstructionService.withdrawAllTokenTypes(
       poolAddress,
@@ -592,6 +599,7 @@ export class SarosSwapService {
   ) {
     const accountInfo = await connection.getAccountInfo(poolAddress);
     const poolInfo = SarosSwapInstructionService.decodePoolData(accountInfo.data);
+    poolInfo.address = poolAddress;
     if(includeBalance) {
       const poolLpMintInfo = await TokenProgramService.getTokenMintInfo(
         connection,

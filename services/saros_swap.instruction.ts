@@ -14,6 +14,7 @@ import * as BufferLayout from 'buffer-layout';
 export const INITIALIZE_POOL_SPAN = 324;
 
 export class PoolInfo {
+  address: PublicKey
   version: number
   state: number
   nonce: number

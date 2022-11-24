@@ -1,6 +1,4 @@
 import {
-  DEFAULT_PUBKEY,
-  SolanaService,
   SystemProgramService,
   TokenProgramService
 } from '@coin98/solana-support-library';
@@ -15,10 +13,9 @@ import {
   PublicKey
 } from '@solana/web3.js';
 import BN from 'bn.js';
-import { expect } from 'chai';
 import { SarosSwapService } from '../services/saros_swap.service';
 
-describe('saros_swap_test', function() {
+describe('main_flows_tests', function() {
 
   const PROGRAM_ID = new PublicKey('StaGHXrozaggJ7a9Y8U5ak5NxxZgYVdrBG9kQwbHAes');
 
@@ -116,11 +113,6 @@ describe('saros_swap_test', function() {
       new BN(0),
       PROGRAM_ID,
     );
-    const poolInfo = await SarosSwapService.getPoolInfo(
-      connection,
-      poolAccount.publicKey,
-      false,
-    );
   });
 
   it('deposit/withdraw', async function() {
@@ -151,22 +143,16 @@ describe('saros_swap_test', function() {
       new BN('10000000'),
     );
 
-    const poolAccount = Keypair.generate();
-    await SarosSwapService.createPool(
+    await SarosSwapService.depositAllTokenTypes(
       connection,
       defaultAccount,
-      poolAccount,
-      ownerAccount.publicKey,
-      usdcTokenAccount.publicKey,
-      usdtTokenAccount.publicKey,
+      poolAccount.publicKey,
       testAccount2,
       testAccount2.publicKey,
       testAccount2UsdcAddress,
       testAccount2UsdtAddress,
       new BN('10000000'),
       new BN('10000000'),
-      0,
-      new BN(0),
       PROGRAM_ID,
     );
     const poolInfo = await SarosSwapService.getPoolInfo(
@@ -187,7 +173,88 @@ describe('saros_swap_test', function() {
       testAccount2UsdcAddress,
       testAccount2UsdtAddress,
       testAccount2LpTokenAddress,
-      new BN('100000000'),
+      new BN('10000000'),
+      PROGRAM_ID,
+    );
+  });
+
+  it('swap', async function() {
+    const testAccount1UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
+      connection,
+      defaultAccount,
+      testAccount1.publicKey,
+      usdcTokenAccount.publicKey,
+    );
+    await TokenProgramService.mint(
+      connection,
+      ownerAccount,
+      usdcTokenAccount.publicKey,
+      testAccount1UsdcAddress,
+      new BN('1000000000'),
+    );
+    const testAccount1UsdtAddress = await TokenProgramService.createAssociatedTokenAccount(
+      connection,
+      defaultAccount,
+      testAccount1.publicKey,
+      usdtTokenAccount.publicKey,
+    );
+    await TokenProgramService.mint(
+      connection,
+      ownerAccount,
+      usdtTokenAccount.publicKey,
+      testAccount1UsdtAddress,
+      new BN('1000000000'),
+    );
+
+    const poolAccount = Keypair.generate();
+    await SarosSwapService.createPool(
+      connection,
+      defaultAccount,
+      poolAccount,
+      ownerAccount.publicKey,
+      usdcTokenAccount.publicKey,
+      usdtTokenAccount.publicKey,
+      testAccount1,
+      testAccount1.publicKey,
+      testAccount1UsdcAddress,
+      testAccount1UsdtAddress,
+      new BN('1000000000'),
+      new BN('1000000000'),
+      0,
+      new BN(0),
+      PROGRAM_ID,
+    );
+
+    const testAccount2UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
+      connection,
+      defaultAccount,
+      testAccount2.publicKey,
+      usdcTokenAccount.publicKey,
+    );
+    await TokenProgramService.mint(
+      connection,
+      ownerAccount,
+      usdcTokenAccount.publicKey,
+      testAccount2UsdcAddress,
+      new BN('1000000000'),
+    );
+    const testAccount2UsdtAddress = await TokenProgramService.createAssociatedTokenAccount(
+      connection,
+      defaultAccount,
+      testAccount2.publicKey,
+      usdtTokenAccount.publicKey,
+    );
+
+    await SarosSwapService.swap(
+      connection,
+      defaultAccount,
+      poolAccount.publicKey,
+      testAccount2,
+      testAccount2UsdcAddress,
+      testAccount2UsdtAddress,
+      new BN('1000000'),
+      new BN('990000'),
+      null,
       PROGRAM_ID,
     );
   });
