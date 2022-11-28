@@ -254,8 +254,7 @@ export class SarosSwapService {
     delegateAccount: Keypair,
     userTokenInAddress: PublicKey,
     userTokenOutAddress: PublicKey,
-    amountIn: BN,
-    minimumAmountOut: BN,
+    tokenInAmount: BN,
     partnerFeeAddress: PublicKey,
     sarosSwapProgramId: PublicKey,
   ) {
@@ -264,8 +263,8 @@ export class SarosSwapService {
     const poolAccountInfo = await SarosSwapService.getPoolInfo(
       connection,
       poolAddress,
-      false,
-    )
+      true,
+    );
     const userTokenInAccountInfo = await TokenProgramService.getTokenAccountInfo(
       connection,
       userTokenInAddress,
@@ -277,11 +276,21 @@ export class SarosSwapService {
 
     let poolTokenInAddress = null;
     let poolTokenOutAddress = null;
+    let minTokenOutAmount = null;
+    const calculator = new SarosSwapCalculator(poolAccountInfo);
     if (userTokenInAccountInfo.mint.toBase58() === poolAccountInfo.token0Mint.toBase58()) {
       poolTokenInAddress = poolAccountInfo.token0Account;
+      minTokenOutAmount = calculator.calcTokenOutAmountForSwapAtoB(
+        tokenInAmount,
+        0,
+      );
     }
     if (userTokenInAccountInfo.mint.toBase58() === poolAccountInfo.token1Mint.toBase58()) {
       poolTokenInAddress = poolAccountInfo.token1Account;
+      minTokenOutAmount = calculator.calcTokenOutAmountForSwapBtoA(
+        tokenInAmount,
+        0,
+      );
     }
     if (userTokenOutAccountInfo.mint.toBase58() === poolAccountInfo.token0Mint.toBase58()) {
       poolTokenOutAddress = poolAccountInfo.token0Account;
@@ -315,8 +324,8 @@ export class SarosSwapService {
       delegateAccount.publicKey,
       userTokenInAddress,
       userTokenOutAddress,
-      amountIn,
-      minimumAmountOut,
+      tokenInAmount,
+      minTokenOutAmount,
       parterFeeLpTokenAddress,
       sarosSwapProgramId,
     )
@@ -557,8 +566,6 @@ export class SarosSwapService {
     if (userTokenAccountInfo.mint.toBase58() === poolAccountInfo.token1Mint.toBase58()) {
       tokenOutAmount = calculator.calcTokenAmountForWithdrawToken1(lpTokenAmount, 0);
     }
-    console.info('lpTokenAmount = ', lpTokenAmount.toNumber());
-    console.info('tokenOutAmount = ', tokenOutAmount.toNumber());
 
     const depositInstruction = SarosSwapInstructionService.withdrawSingleTokenTypeExactAmountOut(
       poolAddress,

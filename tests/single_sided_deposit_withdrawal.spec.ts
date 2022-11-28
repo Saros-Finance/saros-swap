@@ -15,7 +15,7 @@ import {
 import BN from 'bn.js';
 import { SarosSwapService } from '../services/saros_swap.service';
 
-describe.only('single_sided_deposit_withdrawal_tests', function() {
+describe('single_sided_deposit_withdrawal_tests', function() {
 
   const PROGRAM_ID = new PublicKey('StaGHXrozaggJ7a9Y8U5ak5NxxZgYVdrBG9kQwbHAes');
 

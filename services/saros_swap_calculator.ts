@@ -39,7 +39,8 @@ export class SarosSwapCalculator {
     const token1LpEquivalent = token1Amount.mul(poolInfo.lpTokenSupply)
       .div(poolInfo.token1Amount);
     let lpAmount = BN.min(token0LpEquivalent, token1LpEquivalent);
-    return applyLowerSlippage(lpAmount, slippage);
+    const minLpAmount = applyLowerSlippage(lpAmount, slippage);
+    return minLpAmount;
   }
 
   calcTokenAmountsForDepositAllTypes(
@@ -51,10 +52,9 @@ export class SarosSwapCalculator {
       .div(poolInfo.lpTokenSupply);
     const token1Amount = lpTokenAmount.mul(poolInfo.token1Amount)
       .div(poolInfo.lpTokenSupply);
-    return [
-      applyUpperSlippage(token0Amount, slippage),
-      applyUpperSlippage(token1Amount, slippage),
-    ];
+    const maxToken0Amount = applyUpperSlippage(token0Amount, slippage);
+    const maxToken1Amount = applyUpperSlippage(token1Amount, slippage);
+    return [maxToken0Amount, maxToken1Amount];
   }
 
   // WITHDRAWAL
@@ -69,7 +69,8 @@ export class SarosSwapCalculator {
     const token1LpEquivalent = token1Amount.mul(poolInfo.lpTokenSupply)
       .div(poolInfo.token1Amount);
     let lpAmount = BN.min(token0LpEquivalent, token1LpEquivalent);
-    return applyUpperSlippage(lpAmount, slippage);
+    const maxLpAmount = applyUpperSlippage(lpAmount, slippage);
+    return maxLpAmount;
   }
 
   calcTokenAmountsForWithdrawAllTypes(
@@ -81,10 +82,9 @@ export class SarosSwapCalculator {
       .div(poolInfo.lpTokenSupply);
     const token1Amount = lpTokenAmount.mul(poolInfo.token1Amount)
       .div(poolInfo.lpTokenSupply);
-    return [
-      applyLowerSlippage(token0Amount, slippage),
-      applyLowerSlippage(token1Amount, slippage),
-    ];
+    const minToken0Amount = applyLowerSlippage(token0Amount, slippage);
+    const minToken1Amount = applyLowerSlippage(token1Amount, slippage);
+    return [minToken0Amount, minToken1Amount];
   }
 
   // WITHDRAW SINGLE-SIDED
@@ -186,6 +186,101 @@ export class SarosSwapCalculator {
     return minTokenAmount;
   }
 
+  // SWAP
+  calcTokenOutAmountForSwapAtoB(
+    tokenInAmount: BN,
+    slippage: number,
+  ): BN {
+    const poolInfo = this._poolInfo;
+    return this.calcTokenOutAmountForSwapTokenX(
+      tokenInAmount,
+      poolInfo.token0Amount,
+      poolInfo.token1Amount,
+      slippage,
+    );
+  }
+
+  calcTokenOutAmountForSwapBtoA(
+    tokenInAmount: BN,
+    slippage: number,
+  ): BN {
+    const poolInfo = this._poolInfo;
+    return this.calcTokenOutAmountForSwapTokenX(
+      tokenInAmount,
+      poolInfo.token1Amount,
+      poolInfo.token0Amount,
+      slippage,
+    );
+  }
+
+  private calcTokenOutAmountForSwapTokenX(
+    tokenInAmount: BN,
+    poolTokenInAmount: BN,
+    poolTokenOutAmount: BN,
+    slippage: number,
+  ): BN {
+    const poolInfo = this._poolInfo;
+    const [tradeFee1N, tradeFee1D] = getTradingFee(poolInfo);
+    const [tradeFee2N, tradeFee2D] = getProtocolTradingFee(poolInfo);
+    const tradeFeeN = tradeFee1N.mul(tradeFee2D).add(tradeFee2N.mul(tradeFee1D));
+    const tradeFeeD = tradeFee1D.mul(tradeFee2D);
+    const tokenInAmountWithoutFee = excludeFee(tokenInAmount, tradeFeeN, tradeFeeD);
+    const invariant = poolTokenInAmount.mul(poolTokenOutAmount);
+    const newPoolTokenInAmount = poolTokenInAmount.add(tokenInAmountWithoutFee);
+    const mod = invariant.mod(newPoolTokenInAmount);
+    const newPoolTokenOutAmount = invariant.div(newPoolTokenInAmount)
+      .add(mod.eqn(0) ? new BN('0') : new BN('1'));
+    const tokenOutAmount = poolTokenOutAmount.sub(newPoolTokenOutAmount);
+    const minTokenOutAmount = applyLowerSlippage(tokenOutAmount, slippage);
+    return minTokenOutAmount;
+  }
+
+  calcTokenInAmountForSwapAtoB(
+    tokenOutAmount: BN,
+    slippage: number,
+  ): BN {
+    const poolInfo = this._poolInfo;
+    return this.calcTokenInAmountForSwapTokenX(
+      tokenOutAmount,
+      poolInfo.token0Amount,
+      poolInfo.token1Amount,
+      slippage,
+    );
+  }
+
+  calcTokenInAmountForSwapBtoA(
+    tokenOutAmount: BN,
+    slippage: number,
+  ): BN {
+    const poolInfo = this._poolInfo;
+    return this.calcTokenInAmountForSwapTokenX(
+      tokenOutAmount,
+      poolInfo.token1Amount,
+      poolInfo.token0Amount,
+      slippage,
+    );
+  }
+
+  private calcTokenInAmountForSwapTokenX(
+    tokenOutAmount: BN,
+    poolTokenInAmount: BN,
+    poolTokenOutAmount: BN,
+    slippage: number,
+  ): BN {
+    const invariant = poolTokenInAmount.mul(poolTokenOutAmount);
+    const newPoolTokenOutAmount = poolTokenOutAmount.sub(tokenOutAmount);
+    const newPoolTokenInAmount = invariant.div(newPoolTokenOutAmount);
+    const tokenInAmount = newPoolTokenInAmount.sub(poolTokenInAmount);
+    const poolInfo = this._poolInfo;
+    const [tradeFee1N, tradeFee1D] = getTradingFee(poolInfo);
+    const [tradeFee2N, tradeFee2D] = getProtocolTradingFee(poolInfo);
+    const tradeFeeN = tradeFee1N.mul(tradeFee2D).add(tradeFee2N.mul(tradeFee1D));
+    const tradeFeeD = tradeFee1D.mul(tradeFee2D);
+    const tokenInAmountWithFee = includeFee(tokenInAmount, tradeFeeN, tradeFeeD);
+    const maxTokenInAmount = applyUpperSlippage(tokenInAmountWithFee, slippage);
+    return maxTokenInAmount;
+  }
+
   // SHARE
   calcLpTokenAmountFromToken0(
     tokenAmount: BN,
@@ -281,29 +376,6 @@ function excludeFee(
     fee = new BN('1');
   }
   return postFeeAmount.sub(fee);
-}
-
-function ceil(
-  orignalNumber: BN,
-  decimal: number,
-): BN {
-  if(decimal == 0) {
-    return orignalNumber;
-  }
-  const precision = Math.pow(10, decimal);
-  const mod = orignalNumber.modrn(precision);
-  return orignalNumber.divn(precision).addn(mod == 0 ? 0: 1);
-}
-
-function floor(
-  orignalNumber: BN,
-  decimal: number,
-): BN {
-  if(decimal == 0) {
-    return orignalNumber;
-  }
-  const precision = Math.pow(10, decimal);
-  return orignalNumber.divn(precision);
 }
 
 function getTradingFee(

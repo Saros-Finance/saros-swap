@@ -253,7 +253,6 @@ describe('main_flows_tests', function() {
       testAccount2UsdcAddress,
       testAccount2UsdtAddress,
       new BN('1000000'),
-      new BN('990000'),
       null,
       PROGRAM_ID,
     );
