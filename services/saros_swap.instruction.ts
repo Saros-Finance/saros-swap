@@ -405,10 +405,10 @@ export class SarosSwapInstructionService {
       <AccountMeta>{ pubkey: poolAuthorityAddress, isSigner: false, isWritable: false },
       <AccountMeta>{ pubkey: userDelegateAddress, isSigner: true, isWritable: false },
       <AccountMeta>{ pubkey: poolLpTokenMintAddress, isSigner: false, isWritable: true },
-      <AccountMeta>{ pubkey: userTokenOutAdddress, isSigner: false, isWritable: true },
+      <AccountMeta>{ pubkey: userLpTokenAddress, isSigner: false, isWritable: true },
       <AccountMeta>{ pubkey: poolToken0Address, isSigner: false, isWritable: true },
       <AccountMeta>{ pubkey: poolToken1Address, isSigner: false, isWritable: true },
-      <AccountMeta>{ pubkey: userLpTokenAddress, isSigner: false, isWritable: true },
+      <AccountMeta>{ pubkey: userTokenOutAdddress, isSigner: false, isWritable: true },
       <AccountMeta>{ pubkey: protocolFeeLpTokenAddress, isSigner: false, isWritable: true },
       <AccountMeta>{ pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ];

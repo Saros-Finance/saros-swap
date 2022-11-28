@@ -19,15 +19,16 @@ import {
   SarosSwapInstructionService
 } from './saros_swap.instruction';
 import { SarosSwapCalculator } from './saros_swap_calculator';
-
-const TRADING_FEE_NUMERATOR = new BN(25); // For LP
-const TRADING_FEE_DENOMINATOR = new BN(10000);
-const OWNER_TRADING_FEE_NUMERATOR = new BN(5); // For Protocol
-const OWNER_TRADING_FEE_DENOMINATOR = new BN(10000);
-const OWNER_WITHDRAW_FEE_NUMERATOR = new BN(0); // For Protocol
-const OWNER_WITHDRAW_FEE_DENOMINATOR = new BN(0);
-const HOST_FEE_NUMERATOR = new BN(20); // For Partner
-const HOST_FEE_DENOMINATOR = new BN(100);
+import {
+  HOST_FEE_DENOMINATOR,
+  HOST_FEE_NUMERATOR,
+  OWNER_TRADING_FEE_DENOMINATOR,
+  OWNER_TRADING_FEE_NUMERATOR,
+  OWNER_WITHDRAW_FEE_DENOMINATOR,
+  OWNER_WITHDRAW_FEE_NUMERATOR,
+  TRADING_FEE_DENOMINATOR,
+  TRADING_FEE_NUMERATOR
+} from './saros_swap_constant';
 
 export class SarosSwapService {
 
@@ -532,7 +533,7 @@ export class SarosSwapService {
     delegateAccount: Keypair,
     userTokenOutAddress: PublicKey,
     userLpTokenAddress: PublicKey,
-    tokenOutAmount: BN,
+    lpTokenAmount: BN,
     sarosSwapProgramId: PublicKey,
   ): Promise<boolean> {
     const transaction = new Transaction();
@@ -548,25 +549,16 @@ export class SarosSwapService {
       userTokenOutAddress,
     );
 
-    let poolTokenXAmount = null;
+    const calculator = new SarosSwapCalculator(poolAccountInfo);
+    let tokenOutAmount = null;
     if (userTokenAccountInfo.mint.toBase58() === poolAccountInfo.token0Mint.toBase58()) {
-      poolTokenXAmount = poolAccountInfo.token0Amount;
+      tokenOutAmount = calculator.calcTokenAmountForWithdrawToken0(lpTokenAmount, 0);
     }
     if (userTokenAccountInfo.mint.toBase58() === poolAccountInfo.token1Mint.toBase58()) {
-      poolTokenXAmount = poolAccountInfo.token1Amount;
+      tokenOutAmount = calculator.calcTokenAmountForWithdrawToken1(lpTokenAmount, 0);
     }
-
-    const lpTokenAmount = calculateTokensToLpTokens(
-      tokenOutAmount,
-      poolTokenXAmount.sub(tokenOutAmount),
-      poolAccountInfo.lpTokenSupply,
-    );
-    let adjustedLpTokenAmount = lpTokenAmount.muln(1.0001);
-    if (!OWNER_WITHDRAW_FEE_NUMERATOR.eqn(0)) {
-      adjustedLpTokenAmount = adjustedLpTokenAmount
-        .mul(OWNER_WITHDRAW_FEE_NUMERATOR.add(OWNER_WITHDRAW_FEE_DENOMINATOR))
-        .divRound(OWNER_WITHDRAW_FEE_DENOMINATOR);
-    }
+    console.info('lpTokenAmount = ', lpTokenAmount.toNumber());
+    console.info('tokenOutAmount = ', tokenOutAmount.toNumber());
 
     const depositInstruction = SarosSwapInstructionService.withdrawSingleTokenTypeExactAmountOut(
       poolAddress,
@@ -578,7 +570,7 @@ export class SarosSwapService {
       userTokenOutAddress,
       userLpTokenAddress,
       tokenOutAmount,
-      adjustedLpTokenAmount,
+      lpTokenAmount,
       sarosSwapProgramId,
     );
     transaction.add(depositInstruction);
