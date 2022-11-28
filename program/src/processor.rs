@@ -725,6 +725,18 @@ impl Processor {
         Ok(())
     }
 
+    #[cfg(all(not(feature = "localhost")))]
+    /// Processes DepositSingleTokenTypeExactAmountIn
+    pub fn process_deposit_single_token_type_exact_amount_in(
+        _program_id: &Pubkey,
+        _source_token_amount: u64,
+        _minimum_pool_token_amount: u64,
+        _accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    #[cfg(feature = "localhost")]
     /// Processes DepositSingleTokenTypeExactAmountIn
     pub fn process_deposit_single_token_type_exact_amount_in(
         program_id: &Pubkey,
@@ -845,6 +857,18 @@ impl Processor {
         Ok(())
     }
 
+    #[cfg(all(not(feature = "localhost")))]
+    /// Processes a [WithdrawSingleTokenTypeExactAmountOut](enum.Instruction.html).
+    pub fn process_withdraw_single_token_type_exact_amount_out(
+        _program_id: &Pubkey,
+        _destination_token_amount: u64,
+        _maximum_pool_token_amount: u64,
+        _accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    #[cfg(feature = "localhost")]
     /// Processes a [WithdrawSingleTokenTypeExactAmountOut](enum.Instruction.html).
     pub fn process_withdraw_single_token_type_exact_amount_out(
         program_id: &Pubkey,
@@ -1044,15 +1068,12 @@ impl Processor {
                 },
             ) => {
                 msg!("Instruction: DepositSingleTokenTypeExactAmountIn");
-                let _source_token_amount = source_token_amount;
-                let _minimum_pool_token_amount = minimum_pool_token_amount;
-                Ok(())
-                // Self::process_deposit_single_token_type_exact_amount_in(
-                //     program_id,
-                //     source_token_amount,
-                //     minimum_pool_token_amount,
-                //     accounts,
-                // )
+                Self::process_deposit_single_token_type_exact_amount_in(
+                    program_id,
+                    source_token_amount,
+                    minimum_pool_token_amount,
+                    accounts,
+                )
             }
             SwapInstruction::WithdrawSingleTokenTypeExactAmountOut(
                 WithdrawSingleTokenTypeExactAmountOut {
@@ -1061,15 +1082,12 @@ impl Processor {
                 },
             ) => {
                 msg!("Instruction: WithdrawSingleTokenTypeExactAmountOut");
-                let _destination_token_amount = destination_token_amount;
-                let _maximum_pool_token_amount = maximum_pool_token_amount;
-                Ok(())
-                // Self::process_withdraw_single_token_type_exact_amount_out(
-                //     program_id,
-                //     destination_token_amount,
-                //     maximum_pool_token_amount,
-                //     accounts,
-                // )
+                Self::process_withdraw_single_token_type_exact_amount_out(
+                    program_id,
+                    destination_token_amount,
+                    maximum_pool_token_amount,
+                    accounts,
+                )
             }
         }
     }

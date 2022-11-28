@@ -164,7 +164,8 @@ describe.only('single_sided_deposit_withdrawal_tests', function() {
       poolInfo.lpTokenMint,
     );
 
-    const buggyLpAmount = new BN('1002506');
+    //const buggyLpAmount = new BN('1002506');
+    const correctLpAmount = new BN('1000000');
     await SarosSwapService.withdrawSingleTokenType(
       connection,
       defaultAccount,
@@ -172,7 +173,7 @@ describe.only('single_sided_deposit_withdrawal_tests', function() {
       testAccount2,
       testAccount2UsdcAddress,
       testAccount2LpTokenAddress,
-      buggyLpAmount,
+      correctLpAmount,
       PROGRAM_ID,
     );
   });

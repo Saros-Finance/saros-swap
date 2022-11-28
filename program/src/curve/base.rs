@@ -150,7 +150,7 @@ impl SwapCurve {
         // https://github.com/balancer-labs/balancer-core/blob/f4ed5d65362a8d6cec21662fb6eae233b0babc1f/contracts/BMath.sol#L117
         let half_source_amount = std::cmp::max(1, source_amount.checked_div(2)?);
         let trade_fee = fees.trading_fee(half_source_amount)?;
-        let source_amount = source_amount.checked_sub(trade_fee)?;
+        let source_amount = source_amount.checked_add(trade_fee)?;
         self.calculator.withdraw_single_token_type_exact_out(
             source_amount,
             swap_token_a_amount,
