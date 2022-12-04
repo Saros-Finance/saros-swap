@@ -84,7 +84,7 @@ pub trait DynPack {
 }
 
 /// Trait representing operations required on a swap curve
-pub trait CurveCalculator: Debug + DynPack {
+pub trait CurveCalculator: CurveCalculatorClone + Debug + DynPack {
     /// Calculate how much destination token will be provided given an amount
     /// of source token.
     fn swap_without_fees(
@@ -189,6 +189,29 @@ pub trait CurveCalculator: Debug + DynPack {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber>;
+}
+
+/// Implement CurveCalculator + Clone by splitting CurveCalculatorClone into its own trait allow
+/// us to provide a blanket implement for all compatible types
+pub trait CurveCalculatorClone {
+    /// Let clone a box
+    fn clone_box(&self) -> Box<dyn CurveCalculator>;
+}
+
+impl<T> CurveCalculatorClone for T
+where
+    T: 'static + CurveCalculator + Clone,
+{
+    fn clone_box(&self) -> Box<dyn CurveCalculator> {
+        Box::new(self.clone())
+    }
+}
+
+// We can now implement Clone manually by forwarding to clone_box.
+impl Clone for Box<dyn CurveCalculator> {
+    fn clone(&self) -> Box<dyn CurveCalculator> {
+        self.clone_box()
+    }
 }
 
 /// Test helpers for curves

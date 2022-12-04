@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
+use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS, AuthorityConstraints};
 use crate::{
     curve::{
         base::SwapCurve,
@@ -11,6 +11,7 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        SetPausable,WithdrawUnrelativeToken,SetFee
     },
     state::{SwapState, SwapV1, SwapVersion},
 };
@@ -307,7 +308,7 @@ impl Processor {
         )?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
-            is_initialized: true,
+            state: 1u8,
             bump_seed,
             token_program_id,
             token_a: *token_a_info.key,
@@ -346,6 +347,10 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
+            return Err(SwapError::SwapAccountIsPause.into());
+        }
 
         if *authority_info.key
             != Self::authority_id(program_id, swap_info.key, token_swap.bump_seed())?
@@ -513,6 +518,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
+            return Err(SwapError::SwapAccountIsPause.into());
+        }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
             return Err(SwapError::UnsupportedCurveOperation.into());
@@ -620,6 +628,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
+            return Err(SwapError::SwapAccountIsPause.into());
+        }
         Self::check_accounts(
             token_swap.as_ref(),
             program_id,
@@ -756,6 +767,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
+            return Err(SwapError::SwapAccountIsPause.into());
+        }
         let calculator = &token_swap.swap_curve().calculator;
         if !calculator.allows_deposits() {
             return Err(SwapError::UnsupportedCurveOperation.into());
@@ -889,6 +903,9 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        if SwapVersion::is_paused(&swap_info.data.borrow()) {
+            return Err(SwapError::SwapAccountIsPause.into());
+        }
         let destination_account =
             Self::unpack_token_account(destination_info, token_swap.token_program_id())?;
         let swap_token_a =
@@ -1008,6 +1025,100 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [SetPausable](enum.Instruction.html).
+    pub fn process_set_pause(_program_id: &Pubkey, is_pause: &bool, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        AuthorityConstraints::verify_root(authority.key)?;
+
+        let mut account_data = swap_info.data.borrow_mut();
+        if *is_pause {
+            account_data[1] = 3u8;
+        } else {
+            account_data[1] = 1u8;
+        }
+
+        Ok(())
+    }
+
+    /// Processes a [WithdrawUnrelativeToken](enum.Instruction.html).
+    pub fn process_withdraw_unrelative_token(_program_id: &Pubkey, amount: &u64, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let swap_authority_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+        let from_account_info = next_account_info(account_info_iter)?;
+        let to_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+
+        AuthorityConstraints::verify_root(authority.key)?;
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        if *from_account_info.key == *token_swap.as_ref().token_a_account() || *from_account_info.key == *token_swap.as_ref().token_b_account() {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        if *to_account_info.key == *token_swap.as_ref().token_a_account() || *to_account_info.key == *token_swap.as_ref().token_b_account() {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        Self::token_transfer(
+            swap_info.key,
+            token_program_info.clone(),
+            from_account_info.clone(),
+            to_account_info.clone(),
+            swap_authority_info.clone(),
+            token_swap.bump_seed(),
+            *amount,
+        )?;
+
+        Ok(())
+    }
+
+    /// Processes a [SetFee](enum.Instruction.html).
+    pub fn process_set_fee(_program_id: &Pubkey, fees: Fees, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority = next_account_info(account_info_iter)?;
+
+        if !authority.is_signer {
+            return Err(SwapError::AddressOfAuthorityIsIncorrect.into());
+        }
+        AuthorityConstraints::verify_root(authority.key)?;
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+
+        fees.validate()?;
+
+        let obj = SwapVersion::SwapV1(SwapV1 {
+            state: token_swap.state(),
+            bump_seed: token_swap.bump_seed(),
+            token_program_id: *token_swap.token_program_id(),
+            token_a: *token_swap.token_a_account(),
+            token_b: *token_swap.token_b_account(),
+            pool_mint: *token_swap.pool_mint(),
+            token_a_mint: *token_swap.token_a_mint(),
+            token_b_mint: *token_swap.token_b_mint(),
+            pool_fee_account: *token_swap.pool_fee_account(),
+            fees: fees,
+            swap_curve: token_swap.swap_curve().clone(),
+        });
+        SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1089,6 +1200,34 @@ impl Processor {
                     accounts,
                 )
             }
+            SwapInstruction::SetPausable(
+                SetPausable {
+                    is_pause,
+                },
+            ) => {
+                msg!("Instruction: SetPausable");
+                Self::process_set_pause(
+                    program_id,
+                    &is_pause,
+                    accounts,
+                )
+            }
+            SwapInstruction::WithdrawUnrelativeToken(
+                WithdrawUnrelativeToken {
+                    amount,
+                },
+            ) => {
+                msg!("Instruction: WithdrawUnrelativeToken");
+                Self::process_withdraw_unrelative_token(
+                    program_id,
+                    &amount,
+                    accounts,
+                )
+            }
+            SwapInstruction::SetFee(SetFee { fees }) => {
+                msg!("Instruction: SetFee");
+                Self::process_set_fee(program_id, fees, accounts)
+            }
         }
     }
 }
@@ -1156,6 +1295,12 @@ impl PrintProgramError for SwapError {
             }
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
+            }
+            SwapError::AddressOfAuthorityIsIncorrect => {
+                msg!("Error: Address of authority is incorrect")
+            }
+            SwapError::SwapAccountIsPause => {
+                msg!("Error: Swap account is pause")
             }
         }
     }
