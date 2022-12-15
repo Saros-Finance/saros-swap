@@ -63,6 +63,8 @@ export class SarosSwapService {
       poolAccount.publicKey,
       sarosSwapProgramId,
     );
+
+    
     if (await SolanaService.isAddressAvailable(connection, poolLpMintAccount.publicKey)) {
       const lamportsToInitializeMint = await connection.getMinimumBalanceForRentExemption(INITIALIZE_MINT_SPAN);
       const createAccountInstruction = SystemProgram.createAccount({
@@ -141,6 +143,8 @@ export class SarosSwapService {
       );
       preTransaction.add(createATAInstruction);
     }
+    console.log('fee Address before', protocolFeeLpTokenAddress.toString());
+
 
     // PRE-DEPOSIT TO POOL TOKEN ACCOUNTS
     const transferToken0Instruction = TokenProgramInstructionService.transfer(
@@ -265,6 +269,9 @@ export class SarosSwapService {
       poolAddress,
       true,
     );
+
+    console.log('infoPool', poolAccountInfo.feeAccount.toString())
+
     const userTokenInAccountInfo = await TokenProgramService.getTokenAccountInfo(
       connection,
       userTokenInAddress,
@@ -589,6 +596,57 @@ export class SarosSwapService {
 
     console.info(`Withdaw from pool ${poolAddress}`, '---', txSign, '\n');
     return true;
+  }
+
+  static async updatePoolInfo(
+    connection: Connection,
+    payerAccount: Keypair,
+    poolAccount: Keypair,
+    protocolFeeAddress: PublicKey, // SOL address
+    userAddress: PublicKey,
+    sarosSwapProgramId: PublicKey,
+  ): Promise<PublicKey> {
+    const preTransaction = new Transaction();
+    const transaction = new Transaction()
+
+    // POOL LP TOKEN MINT
+    const poolLpMintAccount = this.findPoolLpMint(
+      poolAccount.publicKey,
+      sarosSwapProgramId,
+    );
+
+    // FEE TOKEN ACCOUNT
+    const protocolFeeLpTokenAddress = TokenProgramService.findAssociatedTokenAddress(
+      protocolFeeAddress,
+      poolLpMintAccount.publicKey,
+    );
+    if (
+      userAddress.toBase58() !== protocolFeeAddress.toBase58()
+      && await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
+    ) {
+      const createATAInstruction = TokenProgramInstructionService.createAssociatedTokenAccount(
+        payerAccount.publicKey,
+        protocolFeeAddress,
+        poolLpMintAccount.publicKey,
+      );
+      preTransaction.add(createATAInstruction);
+    }
+    console.log('fee Address Updated', protocolFeeLpTokenAddress.toString());
+
+
+    const swapInstruction = SarosSwapInstructionService.updatePool(
+      poolAccount.publicKey,
+      protocolFeeLpTokenAddress,
+      sarosSwapProgramId,
+    );
+    transaction.add(swapInstruction);
+
+    const txSign = await sendTransaction(connection, transaction, [
+      payerAccount,
+    ]);
+
+    console.info(`Update Pool ${poolAccount.publicKey}`, '---', "preTxSign", '---', txSign, '\n');
+    return poolAccount.publicKey;
   }
 
   static async getPoolInfo(

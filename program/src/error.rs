@@ -23,6 +23,9 @@ pub enum SwapError {
     /// The deserialization of the account returned something besides State::Mint.
     #[error("Deserialized account is not an SPL Token mint")]
     ExpectedMint,
+    /// The account cannot be update because it is not being used.
+    #[error("Swap account is not be initialized")]
+    NotBeInitialized,
 
     // 5.
     /// The deserialization of the account returned something besides State::Account.
@@ -102,6 +105,7 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

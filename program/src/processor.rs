@@ -11,6 +11,7 @@ use crate::{
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        UpdatePoolFee
     },
     state::{SwapState, SwapV1, SwapVersion},
 };
@@ -725,6 +726,51 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [UpdatePoolFee](enum.Instruction.html).
+    pub fn process_update_pool_fee(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        swap_constraints: &Option<SwapConstraints>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let fee_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        let token_program_id = *token_program_info.key;
+        if !(SwapVersion::is_initialized(&swap_info.data.borrow())) {
+            return Err(SwapError::NotBeInitialized.into());
+        }
+
+        let (swap_authority, _) =
+            Pubkey::find_program_address(&[&swap_info.key.to_bytes()], program_id);
+        if *authority_info.key != swap_authority {
+            return Err(SwapError::InvalidProgramAddress.into());
+        }
+        
+        let fee_account = Self::unpack_token_account(fee_account_info, &token_program_id)?;
+
+        if *authority_info.key == fee_account.owner {
+            return Err(SwapError::InvalidOutputOwner.into());
+        }
+
+        if let Some(swap_constraints) = swap_constraints {
+            let owner_key = swap_constraints
+                .owner_key
+                .parse::<Pubkey>()
+                .map_err(|_| SwapError::InvalidOwner)?;
+            if fee_account.owner != owner_key {
+                return Err(SwapError::InvalidOwner.into());
+            }
+        }
+    
+        let mut token_swap = SwapV1::unpack_from_slice(&swap_info.data.borrow_mut())?;
+        token_swap.pool_fee_account = *fee_account_info.key;
+        SwapV1::pack_into_slice(&token_swap, &mut swap_info.data.borrow_mut());
+        Ok(())
+    }
+
     #[cfg(all(not(feature = "localhost")))]
     /// Processes DepositSingleTokenTypeExactAmountIn
     pub fn process_deposit_single_token_type_exact_amount_in(
@@ -1089,6 +1135,12 @@ impl Processor {
                     accounts,
                 )
             }
+            SwapInstruction::UpdatePoolFee(
+                UpdatePoolFee { },
+            ) => {
+                msg!("Instruction: UpdatePoolFee");
+                Self::process_update_pool_fee(program_id, accounts, swap_constraints)
+            }
         }
     }
 }
@@ -1100,6 +1152,7 @@ impl PrintProgramError for SwapError {
     {
         match self {
             SwapError::AlreadyInUse => msg!("Error: Swap account already in use"),
+            SwapError::NotBeInitialized => msg!("Error: Swap account not be initialized"),
             SwapError::InvalidProgramAddress => {
                 msg!("Error: Invalid program address generated from bump seed and key")
             }
