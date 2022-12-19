@@ -605,8 +605,6 @@ export class SarosSwapService {
     const preTransaction = new Transaction();
     const transaction = new Transaction()
     
-    await this.printPoolInfo(connection,poolAccount.publicKey);
-
     // POOL LP TOKEN MINT
     const poolLpMintAccount = this.findPoolLpMint(
       poolAccount.publicKey,
@@ -658,7 +656,6 @@ export class SarosSwapService {
     ]);
 
     console.info(`Update Pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
-    await this.printPoolInfo(connection,poolAccount.publicKey);
     return poolAccount.publicKey;
   }
 

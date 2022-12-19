@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
+use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS, FEES};
 use crate::{
     curve::{
         base::SwapCurve,
@@ -729,8 +729,6 @@ impl Processor {
     /// Processes an [UpdatePoolFee](enum.Instruction.html).
     pub fn process_update_pool_fee(
         program_id: &Pubkey,
-        fees: Fees,
-        swap_curve: SwapCurve,
         accounts: &[AccountInfo],
         swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
@@ -771,11 +769,8 @@ impl Processor {
             if fee_account.owner != owner_key {
                 return Err(SwapError::InvalidOwner.into());
             } 
-            swap_constraints.validate_curve(&swap_curve)?;
-            swap_constraints.validate_fees(&fees)?;
         }
-        fees.validate()?;
-        swap_curve.calculator.validate()?;
+
 
         let obj = SwapVersion::SwapV1(SwapV1 {
             is_initialized: token_swap.is_initialized(),
@@ -787,8 +782,8 @@ impl Processor {
             token_a_mint: *token_swap.token_a_mint(),
             token_b_mint: *token_swap.token_b_mint(),
             pool_fee_account: *fee_account_info.key,
-            fees,
-            swap_curve,
+            fees: FEES.clone(),
+            swap_curve: SwapVersion::get_swap_curve(&swap_info.data.borrow())?,
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -1158,9 +1153,9 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::UpdatePoolFee(UpdatePoolFee { fees, swap_curve }) => {
+            SwapInstruction::UpdatePoolFee(UpdatePoolFee {}) => {
                 msg!("Instruction: Update Pool Fee");
-                Self::process_update_pool_fee(program_id, fees, swap_curve, accounts, swap_constraints)
+                Self::process_update_pool_fee(program_id, accounts, swap_constraints)
             }
         }
     }
