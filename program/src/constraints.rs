@@ -58,7 +58,6 @@ impl<'a> SwapConstraints<'a> {
             Err(SwapError::InvalidFee.into())
         }
     }
-    
 }
 
 #[cfg(feature = "localhost")]

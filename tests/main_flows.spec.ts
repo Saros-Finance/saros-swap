@@ -39,7 +39,6 @@ describe('main_flows_tests', function() {
     usdcTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDC);
     usdtTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDT);
     ownerAccount02 = await TestAccountService.getAccount(6);
-    
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
@@ -76,7 +75,6 @@ describe('main_flows_tests', function() {
       null,
     );
   });
-  
   it('creation', async function() {
     const testAccount1UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
       connection,

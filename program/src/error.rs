@@ -105,7 +105,6 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
-
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

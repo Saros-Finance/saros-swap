@@ -63,8 +63,6 @@ export class SarosSwapService {
       poolAccount.publicKey,
       sarosSwapProgramId,
     );
-
-    
     if (await SolanaService.isAddressAvailable(connection, poolLpMintAccount.publicKey)) {
       const lamportsToInitializeMint = await connection.getMinimumBalanceForRentExemption(INITIALIZE_MINT_SPAN);
       const createAccountInstruction = SystemProgram.createAccount({
@@ -206,7 +204,6 @@ export class SarosSwapService {
     ]);
 
     console.info(`Created pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
-
     return poolAccount.publicKey;
   }
 
@@ -656,14 +653,12 @@ export class SarosSwapService {
       poolLpMintAccount,
     ]);
 
-
     const txSign = await sendTransaction(connection, transaction, [
       payerAccount,    
     ]);
 
     console.info(`Update Pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
     await this.printPoolInfo(connection,poolAccount.publicKey);
-
     return poolAccount.publicKey;
   }
 

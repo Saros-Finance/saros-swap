@@ -90,7 +90,6 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
-
 /// UpdatePoolFee instruction data
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -101,9 +100,6 @@ pub struct UpdatePoolFee {
     /// else that may be required
     pub swap_curve: SwapCurve,
 }
-
-
-
 
 /// Instructions supported by the token swap program.
 #[repr(C)]
@@ -594,7 +590,6 @@ pub fn swap(
         data,
     })
 }
-
 
 /// Creates an 'update_pool_fee' instruction.
 pub fn update_pool_fee(
