@@ -94,7 +94,13 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
 /// UpdatePoolFee instruction data
 #[repr(C)]
 #[derive(Debug, PartialEq)]
-pub struct UpdatePoolFee {}
+pub struct UpdatePoolFee {
+    /// all swap fees
+    pub fees: Fees,
+    /// swap curve info for pool, including CurveType and anything
+    /// else that may be required
+    pub swap_curve: SwapCurve,
+}
 
 
 
@@ -197,16 +203,11 @@ pub enum SwapInstruction {
 
     ///   Update a existing swap
     ///
-    ///   0. `[writable, signer]` existing Token-swap to update.
+    ///   0. `[writable, signer]` Exists Token-swap to update.
     ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
-    ///   2. `[]` token_a Account. Must be non zero, owned by swap authority.
-    ///   3. `[]` token_b Account. Must be non zero, owned by swap authority.
-    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
-    ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
+    ///   2. `[]` Pool Token Account to deposit trading and withdraw fees.
     ///   Must be empty, not owned by swap authority
-    ///   6. `[writable]` Pool Token Account to deposit the initial pool token
-    ///   supply.  Must be empty, not owned by swap authority.
-    ///   7. '[]` Token program id
+    ///   3. '[]` Token program id
     UpdatePoolFee(UpdatePoolFee),
 }
 
@@ -270,7 +271,14 @@ impl SwapInstruction {
                 })
             }
             6 => {
-                Self::UpdatePoolFee(UpdatePoolFee {})
+                if rest.len() >= Fees::LEN {
+                    let (fees, rest) = rest.split_at(Fees::LEN);
+                    let fees = Fees::unpack_unchecked(fees)?;
+                    let swap_curve = SwapCurve::unpack_unchecked(rest)?;
+                    Self::UpdatePoolFee(UpdatePoolFee { fees, swap_curve })
+                } else {
+                    return Err(SwapError::InvalidInstruction.into());
+                }
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -349,8 +357,14 @@ impl SwapInstruction {
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
             }
-            Self::UpdatePoolFee(UpdatePoolFee {}) => {
+            Self::UpdatePoolFee(UpdatePoolFee { fees, swap_curve }) => {
                 buf.push(6);
+                let mut fees_slice = [0u8; Fees::LEN];
+                Pack::pack_into_slice(fees, &mut fees_slice[..]);
+                buf.extend_from_slice(&fees_slice);
+                let mut swap_curve_slice = [0u8; SwapCurve::LEN];
+                Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
+                buf.extend_from_slice(&swap_curve_slice);
             }
         }
         buf
@@ -589,8 +603,10 @@ pub fn update_pool_fee(
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     fee_pubkey: &Pubkey,
+    fees: Fees,
+    swap_curve: SwapCurve
 ) -> Result<Instruction, ProgramError> {
-    let update_data = SwapInstruction::UpdatePoolFee(UpdatePoolFee {});
+    let update_data = SwapInstruction::UpdatePoolFee(UpdatePoolFee { fees, swap_curve });
     let data = update_data.pack();
 
     let accounts = vec![

@@ -729,6 +729,8 @@ impl Processor {
     /// Processes an [UpdatePoolFee](enum.Instruction.html).
     pub fn process_update_pool_fee(
         program_id: &Pubkey,
+        fees: Fees,
+        swap_curve: SwapCurve,
         accounts: &[AccountInfo],
         swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
@@ -737,6 +739,8 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
 
         let token_program_id = *token_program_info.key;
         if !(SwapVersion::is_initialized(&swap_info.data.borrow())) {
@@ -747,6 +751,10 @@ impl Processor {
             Pubkey::find_program_address(&[&swap_info.key.to_bytes()], program_id);
         if *authority_info.key != swap_authority {
             return Err(SwapError::InvalidProgramAddress.into());
+        }
+    
+        if *token_program_info.key != *token_swap.token_program_id() {
+            return Err(SwapError::IncorrectTokenProgramId.into());
         }
         
         let fee_account = Self::unpack_token_account(fee_account_info, &token_program_id)?;
@@ -762,12 +770,27 @@ impl Processor {
                 .map_err(|_| SwapError::InvalidOwner)?;
             if fee_account.owner != owner_key {
                 return Err(SwapError::InvalidOwner.into());
-            }
+            } 
+            swap_constraints.validate_curve(&swap_curve)?;
+            swap_constraints.validate_fees(&fees)?;
         }
-    
-        let mut token_swap = SwapV1::unpack_from_slice(&swap_info.data.borrow_mut())?;
-        token_swap.pool_fee_account = *fee_account_info.key;
-        SwapV1::pack_into_slice(&token_swap, &mut swap_info.data.borrow_mut());
+        fees.validate()?;
+        swap_curve.calculator.validate()?;
+
+        let obj = SwapVersion::SwapV1(SwapV1 {
+            is_initialized: token_swap.is_initialized(),
+            bump_seed: token_swap.bump_seed(),
+            token_program_id: *token_swap.token_program_id(),
+            token_a: *token_swap.token_a_account(),
+            token_b: *token_swap.token_b_account(),
+            pool_mint: *token_swap.pool_mint(),
+            token_a_mint: *token_swap.token_a_mint(),
+            token_b_mint: *token_swap.token_b_mint(),
+            pool_fee_account: *fee_account_info.key,
+            fees,
+            swap_curve,
+        });
+        SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -1135,11 +1158,9 @@ impl Processor {
                     accounts,
                 )
             }
-            SwapInstruction::UpdatePoolFee(
-                UpdatePoolFee { },
-            ) => {
-                msg!("Instruction: UpdatePoolFee");
-                Self::process_update_pool_fee(program_id, accounts, swap_constraints)
+            SwapInstruction::UpdatePoolFee(UpdatePoolFee { fees, swap_curve }) => {
+                msg!("Instruction: Update Pool Fee");
+                Self::process_update_pool_fee(program_id, fees, swap_curve, accounts, swap_constraints)
             }
         }
     }

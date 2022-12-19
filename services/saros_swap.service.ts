@@ -143,8 +143,6 @@ export class SarosSwapService {
       );
       preTransaction.add(createATAInstruction);
     }
-    console.log('fee Address before', protocolFeeLpTokenAddress.toString());
-
 
     // PRE-DEPOSIT TO POOL TOKEN ACCOUNTS
     const transferToken0Instruction = TokenProgramInstructionService.transfer(
@@ -208,6 +206,7 @@ export class SarosSwapService {
     ]);
 
     console.info(`Created pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
+
     return poolAccount.publicKey;
   }
 
@@ -269,8 +268,6 @@ export class SarosSwapService {
       poolAddress,
       true,
     );
-
-    console.log('infoPool', poolAccountInfo.feeAccount.toString())
 
     const userTokenInAccountInfo = await TokenProgramService.getTokenAccountInfo(
       connection,
@@ -604,10 +601,14 @@ export class SarosSwapService {
     poolAccount: Keypair,
     protocolFeeAddress: PublicKey, // SOL address
     userAddress: PublicKey,
+    curveType: number,
+    curveParameters: BN,
     sarosSwapProgramId: PublicKey,
   ): Promise<PublicKey> {
     const preTransaction = new Transaction();
     const transaction = new Transaction()
+    
+    await this.printPoolInfo(connection,poolAccount.publicKey);
 
     // POOL LP TOKEN MINT
     const poolLpMintAccount = this.findPoolLpMint(
@@ -620,6 +621,7 @@ export class SarosSwapService {
       protocolFeeAddress,
       poolLpMintAccount.publicKey,
     );
+
     if (
       userAddress.toBase58() !== protocolFeeAddress.toBase58()
       && await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
@@ -631,21 +633,37 @@ export class SarosSwapService {
       );
       preTransaction.add(createATAInstruction);
     }
-    console.log('fee Address Updated', protocolFeeLpTokenAddress.toString());
-
 
     const swapInstruction = SarosSwapInstructionService.updatePool(
       poolAccount.publicKey,
       protocolFeeLpTokenAddress,
+      TRADING_FEE_NUMERATOR,
+      TRADING_FEE_DENOMINATOR,
+      OWNER_TRADING_FEE_NUMERATOR,
+      OWNER_TRADING_FEE_DENOMINATOR,
+      OWNER_WITHDRAW_FEE_NUMERATOR,
+      OWNER_WITHDRAW_FEE_DENOMINATOR,
+      HOST_FEE_NUMERATOR,
+      HOST_FEE_DENOMINATOR,
+      curveType,
+      curveParameters,
       sarosSwapProgramId,
     );
     transaction.add(swapInstruction);
 
-    const txSign = await sendTransaction(connection, transaction, [
+    const preTxSign = await sendTransaction(connection, preTransaction, [
       payerAccount,
+      poolLpMintAccount,
     ]);
 
-    console.info(`Update Pool ${poolAccount.publicKey}`, '---', "preTxSign", '---', txSign, '\n');
+
+    const txSign = await sendTransaction(connection, transaction, [
+      payerAccount,    
+    ]);
+
+    console.info(`Update Pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
+    await this.printPoolInfo(connection,poolAccount.publicKey);
+
     return poolAccount.publicKey;
   }
 

@@ -31,25 +31,25 @@ describe('main_flows_tests', function() {
 
   before(async function() {
     poolAccount = await TestAccountService.getAccount(7);
+    // poolAccount = await Keypair.generate();
     defaultAccount = await SolanaConfigService.getDefaultAccount();
     ownerAccount = await TestAccountService.getAccount(0);
     testAccount1 = await TestAccountService.getAccount(1);
     testAccount2 = await TestAccountService.getAccount(2);
     usdcTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDC);
     usdtTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDT);
-    ownerAccount02 = await TestAccountService.getAccount(4);
-
-    console.log("=====================================");
-    console.log('Account console :');
-    console.log('OwnerAccount : ', ownerAccount.publicKey.toString());
-    console.log('OwnerAccount02 : ', ownerAccount02.publicKey.toString());
-    console.log("=====================================");
-
-
+    ownerAccount02 = await TestAccountService.getAccount(6);
+    
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
       ownerAccount.publicKey,
+      1000000,
+    );
+    await SystemProgramService.transfer(
+      connection,
+      defaultAccount,
+      ownerAccount02.publicKey,
       1000000,
     );
     await SystemProgramService.transfer(
@@ -76,7 +76,7 @@ describe('main_flows_tests', function() {
       null,
     );
   });
-
+  
   it('creation', async function() {
     const testAccount1UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
       connection,
@@ -129,8 +129,10 @@ describe('main_flows_tests', function() {
       connection,
       defaultAccount,
       poolAccount,
-      ownerAccount.publicKey,
+      ownerAccount02.publicKey,
       testAccount1.publicKey,
+      0,
+      new BN(0),
       PROGRAM_ID,
     );
   });
@@ -226,7 +228,6 @@ describe('main_flows_tests', function() {
       new BN('1000000000'),
     );
 
-    const poolAccount = Keypair.generate();
     await SarosSwapService.createPool(
       connection,
       defaultAccount,

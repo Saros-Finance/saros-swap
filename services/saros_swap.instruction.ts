@@ -423,13 +423,45 @@ export class SarosSwapInstructionService {
   static updatePool(
     poolAddress: PublicKey,
     protocolFeeLpTokenAddress: PublicKey,
+    tradeFeeNumerator: BN,
+    tradeFeeDenominator: BN,
+    ownerTradeFeeNumerator: BN,
+    ownerTradeFeeDenominator: BN,
+    ownerWithdrawFeeNumerator: BN,
+    ownerWithdrawFeeDenominator: BN,
+    hostFeeNumerator: BN,
+    hostFeeDenominator: BN,
+    curveType: number,
+    curveParameters: BN,
     sarosSwapProgramId: PublicKey,
   ): TransactionInstruction {
     const dataLayout = borsh.struct([
       borsh.u8('instruction'),
+      borsh.u64('tradeFeeNumerator'),
+      borsh.u64('tradeFeeDenominator'),
+      borsh.u64('ownerTradeFeeNumerator'),
+      borsh.u64('ownerTradeFeeDenominator'),
+      borsh.u64('ownerWithdrawFeeNumerator'),
+      borsh.u64('ownerWithdrawFeeDenominator'),
+      borsh.u64('hostFeeNumerator'),
+      borsh.u64('hostFeeDenominator'),
+      borsh.u8('curveType'),
+      BufferLayout.blob(32, 'curveParameters'),
     ]);
+    let curveParamsBuffer = Buffer.alloc(32);
+    curveParameters.toArrayLike(Buffer).copy(curveParamsBuffer);
     const request = {
-      instruction: 6, // UpdatePoolFee instruction
+      instruction: 6, // InitializeSwap instruction
+      tradeFeeNumerator,
+      tradeFeeDenominator,
+      ownerTradeFeeNumerator,
+      ownerTradeFeeDenominator,
+      ownerWithdrawFeeNumerator,
+      ownerWithdrawFeeDenominator,
+      hostFeeNumerator,
+      hostFeeDenominator,
+      curveType,
+      curveParameters: curveParamsBuffer,
     };
     const data = BorshService.serialize(dataLayout, request, 1024);
 
