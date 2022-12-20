@@ -265,6 +265,7 @@ export class SarosSwapService {
       poolAddress,
       true,
     );
+
     const userTokenInAccountInfo = await TokenProgramService.getTokenAccountInfo(
       connection,
       userTokenInAddress,
@@ -589,6 +590,57 @@ export class SarosSwapService {
 
     console.info(`Withdaw from pool ${poolAddress}`, '---', txSign, '\n');
     return true;
+  }
+
+  static async updatePoolFee(
+    connection: Connection,
+    payerAccount: Keypair,
+    poolAddress: PublicKey,
+    protocolFeeAddress: PublicKey, // SOL address
+    sarosSwapProgramId: PublicKey,
+  ): Promise<PublicKey> {
+    console.info(`=== Before Update ===`);
+    await this.printPoolInfo(connection,poolAddress);
+
+    const transaction = new Transaction()
+    // POOL LP TOKEN MINT
+    const poolLpMintAccount = this.findPoolLpMint(
+      poolAddress,
+      sarosSwapProgramId,
+    );
+
+    // FEE TOKEN ACCOUNT
+    const protocolFeeLpTokenAddress = TokenProgramService.findAssociatedTokenAddress(
+      protocolFeeAddress,
+      poolLpMintAccount.publicKey,
+    );
+
+    if (
+      await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
+    ) {
+      const createATAInstruction = TokenProgramInstructionService.createAssociatedTokenAccount(
+        payerAccount.publicKey,
+        protocolFeeAddress,
+        poolLpMintAccount.publicKey,
+      );
+      transaction.add(createATAInstruction);
+    }
+
+    const swapInstruction = SarosSwapInstructionService.updatePoolFee(
+      poolAddress,
+      protocolFeeLpTokenAddress,
+      sarosSwapProgramId,
+    );
+    transaction.add(swapInstruction);
+
+    const txSign = await sendTransaction(connection, transaction, [
+      payerAccount,    
+    ]);
+
+    console.info(`Update Pool ${poolAddress}`, '---', txSign, '\n');
+    console.info(`=== After Update ===`);
+    await this.printPoolInfo(connection,poolAddress);
+    return poolAddress;
   }
 
   static async getPoolInfo(

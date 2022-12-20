@@ -23,6 +23,9 @@ pub enum SwapError {
     /// The deserialization of the account returned something besides State::Mint.
     #[error("Deserialized account is not an SPL Token mint")]
     ExpectedMint,
+    /// The account cannot be update because it is not being used.
+    #[error("Swap account is not be initialized")]
+    NotInitialized,
 
     // 5.
     /// The deserialization of the account returned something besides State::Account.
