@@ -39,6 +39,11 @@ describe('main_flows_tests', function() {
     usdcTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDC);
     usdtTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDT);
     ownerAccount02 = await TestAccountService.getAccount(6);
+    console.log(`
+      poolAccount : ${poolAccount.publicKey.toString()},
+      ownerAccount: ${ownerAccount.publicKey.toString()},
+      ownerAccount02 (for test): ${ownerAccount02.publicKey.toString()}
+    `)
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
@@ -129,8 +134,6 @@ describe('main_flows_tests', function() {
       poolAccount,
       ownerAccount02.publicKey,
       testAccount1.publicKey,
-      0,
-      new BN(0),
       PROGRAM_ID,
     );
   });

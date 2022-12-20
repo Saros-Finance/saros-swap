@@ -598,8 +598,6 @@ export class SarosSwapService {
     poolAccount: Keypair,
     protocolFeeAddress: PublicKey, // SOL address
     userAddress: PublicKey,
-    curveType: number,
-    curveParameters: BN,
     sarosSwapProgramId: PublicKey,
   ): Promise<PublicKey> {
     const preTransaction = new Transaction();
@@ -632,23 +630,12 @@ export class SarosSwapService {
     const swapInstruction = SarosSwapInstructionService.updatePool(
       poolAccount.publicKey,
       protocolFeeLpTokenAddress,
-      TRADING_FEE_NUMERATOR,
-      TRADING_FEE_DENOMINATOR,
-      OWNER_TRADING_FEE_NUMERATOR,
-      OWNER_TRADING_FEE_DENOMINATOR,
-      OWNER_WITHDRAW_FEE_NUMERATOR,
-      OWNER_WITHDRAW_FEE_DENOMINATOR,
-      HOST_FEE_NUMERATOR,
-      HOST_FEE_DENOMINATOR,
-      curveType,
-      curveParameters,
       sarosSwapProgramId,
     );
     transaction.add(swapInstruction);
 
     const preTxSign = await sendTransaction(connection, preTransaction, [
       payerAccount,
-      poolLpMintAccount,
     ]);
 
     const txSign = await sendTransaction(connection, transaction, [
