@@ -27,35 +27,23 @@ describe('main_flows_tests', function() {
   let testAccount2: Keypair;
   let usdcTokenAccount: Keypair;
   let usdtTokenAccount: Keypair;
-  let ownerAccount02: Keypair;
 
   before(async function() {
-    poolAccount = await TestAccountService.getAccount(7);
-    // poolAccount = await Keypair.generate();
+    poolAccount = await Keypair.generate();
     defaultAccount = await SolanaConfigService.getDefaultAccount();
     ownerAccount = await TestAccountService.getAccount(0);
     testAccount1 = await TestAccountService.getAccount(1);
     testAccount2 = await TestAccountService.getAccount(2);
     usdcTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDC);
     usdtTokenAccount = TestAccountService.getNamedTokenAccount(TokenName.USDT);
-    ownerAccount02 = await TestAccountService.getAccount(6);
-    console.log(`
-      poolAccount : ${poolAccount.publicKey.toString()},
-      ownerAccount: ${ownerAccount.publicKey.toString()},
-      ownerAccount02 (for test): ${ownerAccount02.publicKey.toString()}
-    `)
+
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
       ownerAccount.publicKey,
       1000000,
     );
-    await SystemProgramService.transfer(
-      connection,
-      defaultAccount,
-      ownerAccount02.publicKey,
-      1000000,
-    );
+
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
@@ -127,17 +115,6 @@ describe('main_flows_tests', function() {
     );
   });
   
-  it('Update pool fee', async function() {
-    await SarosSwapService.updatePoolInfo(
-      connection,
-      defaultAccount,
-      poolAccount,
-      ownerAccount02.publicKey,
-      testAccount1.publicKey,
-      PROGRAM_ID,
-    );
-  });
-
   it('deposit/withdraw', async function() {
     const testAccount2UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
       connection,

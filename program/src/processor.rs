@@ -742,7 +742,7 @@ impl Processor {
 
         let token_program_id = *token_program_info.key;
         if !(SwapVersion::is_initialized(&swap_info.data.borrow())) {
-            return Err(SwapError::NotBeInitialized.into());
+            return Err(SwapError::NotInitialized.into());
         }
 
         let (swap_authority, _) =
@@ -757,6 +757,10 @@ impl Processor {
         
         let fee_account = Self::unpack_token_account(fee_account_info, &token_program_id)?;
 
+        if fee_account.mint != *token_swap.pool_mint() { 
+            return Err(SwapError::IncorrectPoolMint.into());
+        }
+ 
         if *authority_info.key == fee_account.owner {
             return Err(SwapError::InvalidOutputOwner.into());
         }
@@ -1168,7 +1172,7 @@ impl PrintProgramError for SwapError {
     {
         match self {
             SwapError::AlreadyInUse => msg!("Error: Swap account already in use"),
-            SwapError::NotBeInitialized => msg!("Error: Swap account not be initialized"),
+            SwapError::NotInitialized => msg!("Error: Swap account not be initialized"),
             SwapError::InvalidProgramAddress => {
                 msg!("Error: Invalid program address generated from bump seed and key")
             }

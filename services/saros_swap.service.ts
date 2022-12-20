@@ -592,20 +592,20 @@ export class SarosSwapService {
     return true;
   }
 
-  static async updatePoolInfo(
+  static async updatePoolFee(
     connection: Connection,
     payerAccount: Keypair,
-    poolAccount: Keypair,
+    poolAddress: PublicKey,
     protocolFeeAddress: PublicKey, // SOL address
-    userAddress: PublicKey,
     sarosSwapProgramId: PublicKey,
   ): Promise<PublicKey> {
-    const preTransaction = new Transaction();
+    console.info(`=== Before Update ===`);
+    await this.printPoolInfo(connection,poolAddress);
+
     const transaction = new Transaction()
-    
     // POOL LP TOKEN MINT
     const poolLpMintAccount = this.findPoolLpMint(
-      poolAccount.publicKey,
+      poolAddress,
       sarosSwapProgramId,
     );
 
@@ -616,34 +616,31 @@ export class SarosSwapService {
     );
 
     if (
-      userAddress.toBase58() !== protocolFeeAddress.toBase58()
-      && await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
+      await SolanaService.isAddressAvailable(connection, protocolFeeLpTokenAddress)
     ) {
       const createATAInstruction = TokenProgramInstructionService.createAssociatedTokenAccount(
         payerAccount.publicKey,
         protocolFeeAddress,
         poolLpMintAccount.publicKey,
       );
-      preTransaction.add(createATAInstruction);
+      transaction.add(createATAInstruction);
     }
 
-    const swapInstruction = SarosSwapInstructionService.updatePool(
-      poolAccount.publicKey,
+    const swapInstruction = SarosSwapInstructionService.updatePoolFee(
+      poolAddress,
       protocolFeeLpTokenAddress,
       sarosSwapProgramId,
     );
     transaction.add(swapInstruction);
 
-    const preTxSign = await sendTransaction(connection, preTransaction, [
-      payerAccount,
-    ]);
-
     const txSign = await sendTransaction(connection, transaction, [
       payerAccount,    
     ]);
 
-    console.info(`Update Pool ${poolAccount.publicKey}`, '---', preTxSign, '---', txSign, '\n');
-    return poolAccount.publicKey;
+    console.info(`Update Pool ${poolAddress}`, '---', txSign, '\n');
+    console.info(`=== After Update ===`);
+    await this.printPoolInfo(connection,poolAddress);
+    return poolAddress;
   }
 
   static async getPoolInfo(

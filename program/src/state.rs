@@ -85,7 +85,7 @@ impl SwapVersion {
         }
     }
 
-    /// Hello Terry
+    /// Get swap curve from Pool.
     pub fn get_swap_curve(input: &[u8]) -> Result<SwapCurve, ProgramError> {
         let (&version, rest) = input
             .split_first()

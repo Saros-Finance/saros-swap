@@ -420,7 +420,7 @@ export class SarosSwapInstructionService {
     });
   }
 
-  static updatePool(
+  static updatePoolFee(
     poolAddress: PublicKey,
     protocolFeeLpTokenAddress: PublicKey,
     sarosSwapProgramId: PublicKey,

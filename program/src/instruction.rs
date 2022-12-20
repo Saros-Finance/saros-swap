@@ -196,7 +196,7 @@ pub enum SwapInstruction {
     ///   0. `[writable]` Exists Token-swap to update.
     ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
     ///   2. `[]` Pool Token Account to deposit trading and withdraw fees.
-    ///   Must be empty, not owned by swap authority
+    ///   Must be owned by OWNER and mint is Pool Token
     ///   3. '[]` Token program id
     UpdatePoolFee(UpdatePoolFee),
 }

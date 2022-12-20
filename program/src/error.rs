@@ -25,7 +25,7 @@ pub enum SwapError {
     ExpectedMint,
     /// The account cannot be update because it is not being used.
     #[error("Swap account is not be initialized")]
-    NotBeInitialized,
+    NotInitialized,
 
     // 5.
     /// The deserialization of the account returned something besides State::Account.
