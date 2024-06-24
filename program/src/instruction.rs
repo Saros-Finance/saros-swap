@@ -90,6 +90,32 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// SetPausable instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct SetPausable {
+    /// pause
+    pub is_pause: bool,
+}
+
+/// WithdrawUnrelativeToken instruction data
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct WithdrawUnrelativeToken {
+    /// Amount to withdraw
+    pub amount: u64,
+}
+
+/// SetFeeAndSwapCurve instruction data
+#[repr(C)]
+#[derive(Debug, PartialEq)]
+pub struct SetFee {
+    /// all swap fees
+    pub fees: Fees,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -185,6 +211,28 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    ///   Set pausable (only root can call this instruction)
+    ///
+    ///   0. `[writable]` SwapV2 account
+    ///   1. `[signer]` Authority
+    SetPausable(SetPausable),
+
+    ///   Withdraw Unrelative token
+    ///
+    ///   0. `[]` Swap account
+    ///   1. `[]` Swap authority
+    ///   2. `[signer]` Authority
+    ///   3. `[writable]` From account
+    ///   4. `[writable]` To account
+    ///   5. `[]` Token program account
+    WithdrawUnrelativeToken(WithdrawUnrelativeToken),
+
+    ///   Set Fee, swap curve
+    ///
+    ///   0. `[writable]` Swap account
+    ///   1. `[signer]` Authority
+    SetFee(SetFee),
 }
 
 impl SwapInstruction {
@@ -245,6 +293,30 @@ impl SwapInstruction {
                     destination_token_amount,
                     maximum_pool_token_amount,
                 })
+            }
+            6 => {
+                let (&is_pause, _rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
+                Self::SetPausable(SetPausable {
+                    is_pause: match is_pause {
+                        1 => true,
+                        _ => false,
+                    }
+                })
+            }
+            7 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken {
+                    amount
+                })
+            }
+            8 => {
+                if rest.len() >= Fees::LEN {
+                    let (fees, _rest) = rest.split_at(Fees::LEN);
+                    let fees = Fees::unpack_unchecked(fees)?;
+                    Self::SetFee(SetFee { fees })
+                } else {
+                    return Err(SwapError::InvalidInstruction.into());
+                }
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -322,6 +394,24 @@ impl SwapInstruction {
                 buf.push(5);
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
+            }
+            Self::SetPausable(SetPausable { is_pause }) => {
+                buf.push(6);
+                let pause_bytes = match is_pause {
+                    true => [1] as [u8; 1],
+                    false => [0] as [u8; 1],
+                };
+                buf.extend_from_slice(&pause_bytes);
+            }
+            Self::WithdrawUnrelativeToken(WithdrawUnrelativeToken { amount }) => {
+                buf.push(7);
+                buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::SetFee(SetFee { fees }) => {
+                buf.push(8);
+                let mut fees_slice = [0u8; Fees::LEN];
+                Pack::pack_into_slice(fees, &mut fees_slice[..]);
+                buf.extend_from_slice(&fees_slice);
             }
         }
         buf
