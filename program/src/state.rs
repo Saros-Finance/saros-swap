@@ -37,6 +37,7 @@ pub trait SwapState {
     fn fees(&self) -> &Fees;
     /// Curve associated with swap
     fn swap_curve(&self) -> &SwapCurve;
+
 }
 
 /// All versions of SwapState
@@ -83,7 +84,17 @@ impl SwapVersion {
             Err(_) => false,
         }
     }
-}
+
+    /// Get swap curve from Pool.
+    pub fn get_swap_curve(input: &[u8]) -> Result<SwapCurve, ProgramError> {
+        let (&version, rest) = input
+            .split_first()
+            .ok_or(ProgramError::InvalidAccountData)?;
+        match version {
+            1 => Ok(SwapV1::get_swap_curve(&rest)?),
+            _ => Err(ProgramError::UninitializedAccount),
+        }
+    }}
 
 /// Program states.
 #[repr(C)]
@@ -176,6 +187,28 @@ impl Sealed for SwapV1 {}
 impl IsInitialized for SwapV1 {
     fn is_initialized(&self) -> bool {
         self.is_initialized
+    }
+}
+
+impl SwapV1 {
+    /// hello Terry
+    pub fn get_swap_curve(input: &[u8]) -> Result<SwapCurve, ProgramError> {
+        let input = array_ref![input, 0, 323];
+        #[allow(clippy::ptr_offset_with_cast)]
+        let (
+            _is_initialized,
+            _bump_seed,
+            _token_program_id,
+            _token_a,
+            _token_b,
+            _pool_mint,
+            _token_a_mint,
+            _token_b_mint,
+            _pool_fee_account,
+            _fees,
+            swap_curve,
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
+        Ok(SwapCurve::unpack_from_slice(swap_curve)?)
     }
 }
 

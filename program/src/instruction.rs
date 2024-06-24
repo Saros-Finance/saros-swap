@@ -90,6 +90,11 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// UpdatePoolFee instruction data
+#[repr(C)]
+#[derive(Debug, PartialEq)]
+pub struct UpdatePoolFee {}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -185,6 +190,15 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    ///   Update a existing swap
+    ///
+    ///   0. `[writable]` Exists Token-swap to update.
+    ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
+    ///   2. `[]` Pool Token Account to deposit trading and withdraw fees.
+    ///   Must be owned by OWNER and mint is Pool Token
+    ///   3. '[]` Token program id
+    UpdatePoolFee(UpdatePoolFee),
 }
 
 impl SwapInstruction {
@@ -245,6 +259,9 @@ impl SwapInstruction {
                     destination_token_amount,
                     maximum_pool_token_amount,
                 })
+            }
+            6 => {
+                    Self::UpdatePoolFee(UpdatePoolFee {})
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -322,6 +339,9 @@ impl SwapInstruction {
                 buf.push(5);
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
+            }
+            Self::UpdatePoolFee(UpdatePoolFee {}) => {
+                buf.push(6);
             }
         }
         buf
@@ -544,6 +564,31 @@ pub fn swap(
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates an 'update_pool_fee' instruction.
+pub fn update_pool_fee(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    fee_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let update_data = SwapInstruction::UpdatePoolFee(UpdatePoolFee {});
+    let data = update_data.pack();
+
+    let accounts = vec![
+        AccountMeta::new(*swap_pubkey, true),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*fee_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
 
     Ok(Instruction {
         program_id: *program_id,

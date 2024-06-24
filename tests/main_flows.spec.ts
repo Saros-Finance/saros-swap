@@ -29,7 +29,7 @@ describe('main_flows_tests', function() {
   let usdtTokenAccount: Keypair;
 
   before(async function() {
-    poolAccount = Keypair.generate();
+    poolAccount = await Keypair.generate();
     defaultAccount = await SolanaConfigService.getDefaultAccount();
     ownerAccount = await TestAccountService.getAccount(0);
     testAccount1 = await TestAccountService.getAccount(1);
@@ -43,6 +43,7 @@ describe('main_flows_tests', function() {
       ownerAccount.publicKey,
       1000000,
     );
+
     await SystemProgramService.transfer(
       connection,
       defaultAccount,
@@ -67,7 +68,6 @@ describe('main_flows_tests', function() {
       null,
     );
   });
-
   it('creation', async function() {
     const testAccount1UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
       connection,
@@ -114,7 +114,7 @@ describe('main_flows_tests', function() {
       PROGRAM_ID,
     );
   });
-
+  
   it('deposit/withdraw', async function() {
     const testAccount2UsdcAddress = await TokenProgramService.createAssociatedTokenAccount(
       connection,
@@ -206,7 +206,6 @@ describe('main_flows_tests', function() {
       new BN('1000000000'),
     );
 
-    const poolAccount = Keypair.generate();
     await SarosSwapService.createPool(
       connection,
       defaultAccount,

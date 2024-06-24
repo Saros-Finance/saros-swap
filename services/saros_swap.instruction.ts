@@ -420,6 +420,37 @@ export class SarosSwapInstructionService {
     });
   }
 
+  static updatePoolFee(
+    poolAddress: PublicKey,
+    protocolFeeLpTokenAddress: PublicKey,
+    sarosSwapProgramId: PublicKey,
+  ): TransactionInstruction {
+    const dataLayout = borsh.struct([
+      borsh.u8('instruction'),
+    ]);
+    const request = {
+      instruction: 6, // InitializeSwap instruction
+    };
+    const data = BorshService.serialize(dataLayout, request, 1024);
+
+    const [poolAuthorityAddress,] = this.findPoolAuthorityAddress(
+      poolAddress,
+      sarosSwapProgramId,
+    );
+    const keys: AccountMeta[] = [
+      <AccountMeta>{ pubkey: poolAddress, isSigner: false, isWritable: true },
+      <AccountMeta>{ pubkey: poolAuthorityAddress, isSigner: false, isWritable: false },
+      <AccountMeta>{ pubkey: protocolFeeLpTokenAddress, isSigner: false, isWritable: false },
+      <AccountMeta>{ pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ];
+
+    return new TransactionInstruction({
+      data,
+      keys,
+      programId: sarosSwapProgramId,
+    });
+  }
+
   static decodePoolData(
     data,
   ): PoolInfo {
